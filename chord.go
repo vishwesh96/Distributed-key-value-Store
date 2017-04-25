@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
+	"math/rand"
 	"time"
 )
 
@@ -56,7 +57,7 @@ type LocalNode struct {
 	predecessor *Node
 	config Config
 	// stabilized  time.Time
-	// timer       *time.Timer
+	timer       *time.Timer
 }
 
 func DefaultConfig() Config {
@@ -123,6 +124,7 @@ func (ln *LocalNode) Create() {
 
 	ln.successors[0] = &ln.Node
 	ln.predecessor = nil
+	ln.Schedule()
 }
 
 func (ln *LocalNode) Join(address string) error{
@@ -132,7 +134,6 @@ func (ln *LocalNode) Join(address string) error{
 	s_address := ""
 	e := ln.remote_FindSuccessor(address, ln.Address, &s_address)
 	if (e!= nil) {
-
 		return e;
 	}
 	succ := new(Node)
@@ -140,7 +141,13 @@ func (ln *LocalNode) Join(address string) error{
 	succ.Id = GenHash(ln.config,s_address)
 	ln.successors[0] = succ 
 	e = ln.remote_StabilizeReplicasJoin(s_address,ln.Id,ln.data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
-	return e
+	if (e!= nil) {
+		return e;
+	}
+
+	ln.Stabilize()
+
+	return nil
 }
 
 func (ln *LocalNode) Leave(address string) error{
@@ -169,15 +176,15 @@ func (ln *LocalNode) Ping_stub(emp_arg struct{},emp_reply *struct{}) error {
 	err:=ln.Ping()
 	return err
 }
-func(ln *LocalNode) StabilizeReplicasJoin_stub(id []byte, data_pred []map[string]string) error {
+func (ln *LocalNode) StabilizeReplicasJoin_stub(id []byte, data_pred []map[string]string) error {
 	err:= ln.StabilizeReplicasJoin(id,data_pred)
 	return err
 } 
-func(ln *LocalNode)	SendReplicasSuccessorJoin_stub(args RPC_Join, emp_reply *struct{}) error {
+func (ln *LocalNode)	SendReplicasSuccessorJoin_stub(args RPC_Join, emp_reply *struct{}) error {
 	err:= ln.SendReplicasSuccessorJoin(args.id,args.replica_number)
 	return err
 }
-func(ln *LocalNode)	SendReplicasSuccessorLeave_stub(args RPC_Leave, emp_reply *struct{}) error {
+func (ln *LocalNode)	SendReplicasSuccessorLeave_stub(args RPC_Leave, emp_reply *struct{}) error {
 	err:= ln.SendReplicasSuccessorLeave(args.pred_data,args.replica_number)
 	return err	
 }
@@ -367,19 +374,7 @@ func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data
 	return nil	
 }
 
-func (ln *LocalNode) check_predecessor() {
-	if (ln.predecessor != nil) {
-		err := ln.remote_Ping(ln.predecessor.Address)
-		if (err!=nil) {
-			ln.predecessor = nil
-		}
-	}
 
-}
-
-func (ln *LocalNode) stabilize() {
-	
-}
 
 func (ln *LocalNode) SplitMap(data map[string]string, id []byte) map[string]string{			//deletes from data and inserts in to new_map and returns
 	var new_map map[string]string
@@ -484,4 +479,58 @@ func (ln *LocalNode) SendReplicasSuccessorLeave(pred_data map[string]string,repl
 	
 	}
 	return e
+}
+
+func (ln *LocalNode) check_predecessor() {
+	if (ln.predecessor != nil) {
+		err := ln.remote_Ping(ln.predecessor.Address)
+		if (err!=nil) {
+			ln.predecessor = nil
+		}
+	}
+
+}
+
+func (ln *LocalNode) Stabilize() {
+	ln.timer = nil
+
+	defer ln.Schedule()
+
+	predAddress := ""
+	err := ln.remote_GetPredecessor(ln.successors[0].Address, &predAddress)
+
+	if (err!=nil) {
+		fmt.Println("Successor communication failed")
+		return
+	}
+
+	pred_hash := GenHash(ln.config, predAddress)
+	succ_hash := ln.successors[0].Id
+	my_hash := ln.Id
+
+	if (bytes.Compare(pred_hash, my_hash)>0 && bytes.Compare(pred_hash, succ_hash)<0) {
+		new_succ := new(Node)
+		new_succ.Address = predAddress
+		new_succ.Id = pred_hash
+		ln.successors[0] = new_succ
+	}
+
+	err = ln.remote_Notify(ln.successors[0].Address, ln.Address)
+	if (err!=nil) {
+		fmt.Println("Successor communication failed")
+		return
+	}
+
+}
+
+func (ln *LocalNode) Schedule() {
+	// Setup our stabilize timer
+	ln.timer = time.AfterFunc(randStabilize(ln.config), ln.Stabilize)
+}
+
+func randStabilize(conf Config) time.Duration {
+	min := conf.StabilizeMin
+	max := conf.StabilizeMax
+	r := rand.Float64()
+	return time.Duration((r * float64(max-min)) + float64(min))
 }
