@@ -23,11 +23,22 @@ type Config struct {
 	// Delegate      Delegate         // Invoked to handle ring events
 	hashBits      int              // Bit size of the hash function
 }
+type RPC_SendReplica struct {
+	id []byte
+	replica_number int
+}
+type RPC_Leave struct {
+	pred_data map[string]string
+	replica_number int
+}
 type Node_RPC interface{
 	FindSuccessor_stub(key string, reply *string) error
 	GetPredecessor_stub(emp_arg struct{}, reply *string) error
 	Notify_stub(message string, emp_reply *struct{}) error
 	Ping_stub(emp_arg struct{},emp_reply *struct{}) error
+	StabilizeReplicasJoin_stub(id []byte, data_pred []map[string]string) error 
+	SendReplicasSuccessor_stub(args RPC_SendReplica, emp_reply *struct{}) error 
+	SendReplicasSuccessorLeave_stub(args RPC_Leave, emp_reply *struct{}) error
 }
 
 
@@ -147,6 +158,18 @@ func (ln *LocalNode) Notify_stub(message string, emp_reply *struct{}) error {
 func (ln *LocalNode) Ping_stub(emp_arg struct{},emp_reply *struct{}) error {
 	err:=ln.Ping()
 	return err
+}
+func(ln *LocalNode) StabilizeReplicasJoin_stub(id []byte, data_pred []map[string]string) error {
+	err:=StabilizeReplicasJoin(id,data_pred)
+	return err
+} 
+func(ln *LocalNode)	SendReplicasSuccessor_stub(args RPC_SendReplica, emp_reply *struct{}) error {
+	err:=SendReplicasSuccessor(args.id,args.replica_number)
+	return err
+}
+func(ln *LocalNode)	SendReplicasSuccessorLeave_stub(args RPC_Leave, emp_reply *struct{}) error {
+	err:=SendReplicasSuccessorLeave(args.pred_data,args.replica_number)
+	return err	
 }
 
 func (ln *LocalNode) FindSuccessor(key string, reply *string) error{
@@ -282,6 +305,58 @@ func (ln *LocalNode) remote_Ping (address string) error {
 	}
 	return nil	
 }
+func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, data_pred []map[string]string) error {
+	var complete_address = address+":6000"
+	t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Fatal("dialing error in remote_StabilizeReplicasJoin:", err)
+        return err
+    }
+    err = t.Call("Node_RPC.StabilizeReplicasJoin_stub",id,data_pred)
+	if err != nil {
+    	log.Println("sync Call error in remote_StabilizeReplicasJoin:", err) 
+    	return err
+	}
+	return nil			
+}
+
+func (ln *LocalNode) remote_SendReplicasSuccessor(address string, id []byte,replica_number int) error {
+	var complete_address = address+":6000"
+	t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Fatal("dialing error in remote_SendReplicasSuccessor:", err)
+        return err
+    }
+    emp_reply:=new(struct{})
+    var args RPC_SendReplica
+    args.id=id
+    args.replica_number=replica_number
+    err = t.Call("Node_RPC.SendReplicasSuccessor",args,emp_reply)
+	if err != nil {
+    	log.Println("sync Call error in remote_SendReplicasSuccessor:", err) 
+    	return err
+	}
+	return nil	
+}
+func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data map[string]string,replica_number int){
+	var complete_address = address+":6000"
+	t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Fatal("dialing error in remote_SendReplicasSuccessorLeave:", err)
+        return err
+    }
+    emp_reply:=new(struct{})
+    var args RPC_Leave
+    args.pred_data=pred_data
+    args.replica_number=replica_number
+    err = t.Call("Node_RPC.SendReplicasSuccessorLeave_stub",args,emp_reply)
+	if err != nil {
+    	log.Println("sync Call error in remote_SendReplicasSuccessorLeave:", err) 
+    	return err
+	}
+	return nil	
+}
+
 func (ln *LocalNode) check_predecessor() {
 	if (ln.predecessor != nil) {
 		err := ln.remote_Ping(ln.predecessor.Address)
@@ -319,7 +394,6 @@ func (ln *LocalNode) AddMap(target map[string]string, source map[string]string) 
 	return nil
 }
 
-//RPC
 func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred []map[string]string) error {
 
 	if len(data) != 3 {
@@ -338,7 +412,6 @@ func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred []map[string]str
 	remote_SendReplicasSuccessor(successors[1].Address,id,2)			
 }
 
-//RPC
 func (ln *LocalNode) SendReplicasSuccessor(id []byte,replica_number int) error {
 	if len(data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
@@ -350,4 +423,27 @@ func (ln *LocalNode) SendReplicasSuccessor(id []byte,replica_number int) error {
 		new_map = SplitMap(data[2],id)
 	}
 }
-
+func (ln *LocalNode) SendReplicasSuccessorLeave(pred_data map[string]string,replica_number int){
+	switch replica_number {
+		case 0 :
+		{
+			e = AddMap(data[0],data[1])
+			data[1] = data[2]
+			data[2] = pred_data
+		}
+		case 1 : 
+		{
+			e = AddMap(data[1],data[2])
+			data[2] = pred_data
+		}
+		case 2 : 
+		{
+			e = AddMap(data[2],pred_data)
+		}
+		default :
+		{
+			//TODO
+		}
+	return e
+}
+}
