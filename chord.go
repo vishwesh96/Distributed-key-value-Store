@@ -1,9 +1,15 @@
 package kvstore
 
 import (
+	"bytes"
 	"crypto/sha1"
-	// "fmt"
+	"errors"
+	"fmt"
 	"hash"
+	"log"
+	"net"
+	"net/http"
+	"net/rpc"
 	"time"
 	"errors"
 )
@@ -21,7 +27,7 @@ type Node_RPC interface{
 	FindSuccessor_stub(key string, reply *string) error
 	GetPredecessor_stub(emp_arg struct{}, reply *string) error
 	Notify_stub(message string, emp_reply *struct{}) error
-	Ping_stub(emp_arg struc{},emp_reply *struct{}) error
+	Ping_stub(emp_arg struct{},emp_reply *struct{}) error
 }
 
 
@@ -54,7 +60,7 @@ func DefaultConfig() Config {
 		16, // 16bit hash function
 	}
 }
-func registerServer(server *rpc.Server, iface Server_Func) {
+func registerServer(server *rpc.Server, iface Node_RPC) {
 	// registers Arith interface by name of `Arithmetic`.
 	// If you want this name to be same as the type name, you
 	// can use server.Register instead.
@@ -69,14 +75,14 @@ func (ln *LocalNode) Init(config Config) {
 	ln.finger = make([]*Node, ln.config.hashBits)
  	// // Register with the RPC mechanism
 	done := make(chan string)
-	go startHTTPserver(done,ln.address)
+	go ln.startHTTPserver(done,ln.Address)
     fmt.Println(<-done)
 	// ln.ring.transport.Register(&ln.Node, ln)
 }
 
-func startHTTPserver(done_chan chan<- string, address string) {
+func (ln *LocalNode) startHTTPserver(done_chan chan<- string, address string) {
 	log.Println("HTTP Server started for node ",address)
-	iface:=new(Node_RPC)
+	iface:=ln
 	server_http := rpc.NewServer()
 	registerServer(server_http,iface)
 	// registers an HTTP handler for RPC messages on rpcPath, and a debugging handler on debugPath
@@ -142,7 +148,7 @@ func (ln *LocalNode) Notify_stub(message string, emp_reply *struct{}) error {
 	err := ln.Notify(message)
 	return err
 }
-func (ln *LocalNode) Ping_stub(emp_arg struc{},emp_reply *struct{}) error {
+func (ln *LocalNode) Ping_stub(emp_arg struct{},emp_reply *struct{}) error {
 	err:=ln.Ping()
 	return err
 }
@@ -150,26 +156,52 @@ func (ln *LocalNode) Ping_stub(emp_arg struc{},emp_reply *struct{}) error {
 func (ln *LocalNode) FindSuccessor(key string, reply *string) error{
 	id_hash := GenHash(ln.config, key)
 	my_hash := ln.Id
-	succ_hash := successors[0].Id
-	if (bytes.compare(id_hash,my_hash)>0 && bytes.compare(id_hash,succ_hash)<=0) {
-		return (successors[0].address, nil)
+	succ_hash := ln.successors[0].Id
+	if (bytes.Compare(id_hash,my_hash)>0 && bytes.Compare(id_hash,succ_hash)<=0) {
+		*reply = ln.successors[0].Address
+		return nil
 	}
-	s_address, e := FindSuccessor_Stub(successors[0].address, key)
-	*reply = s_address
-	return e
+	err := ln.remote_FindSuccessor(ln.successors[0].Address, key, reply)
+	return err
 }
 
 func (ln *LocalNode) GetPredecessor(reply *string) (error) {
-	*reply=predecessor.Address
+	if (ln.predecessor == nil) {
+		return errors.New("Predecessor not found")
+	}
+	*reply=ln.predecessor.Address
 	return nil
 }
 
 func (ln *LocalNode) GetSuccessor(reply *string) (error) {
-	*reply=successors[0].Address
-	return nil
+	for _,successor := range ln.successors {
+		if (successor!=nil) {
+			*reply=successor.Address
+			return nil
+		}
+	}
+	
+	return errors.New("Successor not found")
 }
 
 func (ln *LocalNode) Notify(message string) (error) {
+	flag := false
+
+	if (ln.predecessor == nil) {
+		flag = true
+	}
+	if (!flag) {
+		pred_hash := GenHash(ln.config, ln.predecessor.Address)
+		new_hash := GenHash(ln.config, message)
+		my_hash := ln.Id
+		if (bytes.Compare(new_hash, pred_hash) > 0 && bytes.Compare(new_hash, my_hash) < 0) {
+			flag = true
+		}
+	}
+
+	if (flag) {
+		ln.predecessor = &Node{GenHash(ln.config, message), message}
+	}
 	return nil
 }
 
@@ -185,12 +217,12 @@ func (ln *LocalNode) remote_FindSuccessor (address string, key string, reply *st
         log.Fatal("dialing error in remote_FindSuccessor:", err)
         return err
     }
-    err := t.Call("Node_RPC.FindSuccessor_Stub",key,reply)
+    err = t.Call("Node_RPC.FindSuccessor_Stub",key,reply)
 	if err != nil {
     	log.Println("sync Call error in remote_FindSuccessor:", err) 
     	return err
 	}
-	return nill
+	return nil
 
 }
 func (ln *LocalNode) remote_GetPredecessor (address string, reply *string) error {
@@ -201,12 +233,12 @@ func (ln *LocalNode) remote_GetPredecessor (address string, reply *string) error
         return err
     }
     emp_Arg:=new(struct{})
-    err := t.Call("Node_RPC.GetPredecessor_Stub",emp_Arg,reply)
+    err = t.Call("Node_RPC.GetPredecessor_Stub",emp_Arg,reply)
 	if err != nil {
     	log.Println("sync Call error in remote_GetPredecessor:", err) 
     	return err
 	}
-	return nill	
+	return nil	
 }
 func (ln *LocalNode) remote_GetSuccessor (address string, reply *string) error {
 	var complete_address = address+":6000"
@@ -216,12 +248,12 @@ func (ln *LocalNode) remote_GetSuccessor (address string, reply *string) error {
         return err
     }
     emp_Arg:=new(struct{})
-    err := t.Call("Node_RPC.GetSuccessor_Stub",emp_Arg,reply)
+    err = t.Call("Node_RPC.GetSuccessor_Stub",emp_Arg,reply)
 	if err != nil {
     	log.Println("sync Call error in remote_GetSuccessor:", err) 
     	return err
 	}
-	return nill	
+	return nil	
 }
 func (ln *LocalNode) remote_Notify (address string, message string) error {
 		var complete_address = address+":6000"
@@ -231,12 +263,12 @@ func (ln *LocalNode) remote_Notify (address string, message string) error {
         return err
     }
     emp_reply:=new(struct{})
-    err := t.Call("Node_RPC.Notify_Stub",message,&emp_reply)
+    err = t.Call("Node_RPC.Notify_Stub",message,&emp_reply)
 	if err != nil {
     	log.Println("sync Call error in remote_Notify:", err) 
     	return err
 	}
-	return nill	
+	return nil	
 }
 func (ln *LocalNode) remote_Ping (address string) error {
 	var complete_address = address+":6000"
@@ -247,17 +279,19 @@ func (ln *LocalNode) remote_Ping (address string) error {
     }
     emp_reply:=new(struct{})
     emp_args:=new(struct{})
-    err := t.Call("Node_RPC.Ping_Stub",emp_args,&emp_reply)
+    err = t.Call("Node_RPC.Ping_Stub",emp_args,&emp_reply)
 	if err != nil {
     	log.Println("sync Call error in remote_Ping:", err) 
     	return err
 	}
-	return nill	
+	return nil	
 }
 func (ln *LocalNode) check_predecessor() {
-	err := Ping_Stub(predecessor.address)
-	if (err!=nil) {
-		predecessor = nil
+	if (ln.predecessor != nil) {
+		err := ln.remote_Ping(ln.predecessor.Address)
+		if (err!=nil) {
+			ln.predecessor = nil
+		}
 	}
 
 }
