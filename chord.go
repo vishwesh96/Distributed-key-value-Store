@@ -71,7 +71,7 @@ func DefaultConfig() Config {
 		time.Duration(1 * time.Second),
 		time.Duration(3 * time.Second),
 		3,   // 3 successors
-		3,   // 3 Replicas
+		2,   // 3 Replicas
 		// nil, // No delegate
 		16, // 16bit hash function
 	}
@@ -145,6 +145,25 @@ func (ln *LocalNode) Join(address string) error{
 	succ.Address = s_address
 	succ.Id = GenHash(ln.config,s_address)
 	ln.successors[0] = succ 
+
+	e = ln.remote_GetSuccessor(ln.successors[0].Address, &s_address)
+	if (e!= nil) {
+		return e;
+	}
+	succ = new(Node)
+	succ.Address = s_address
+	succ.Id = GenHash(ln.config,s_address)
+	ln.successors[1] = succ 
+
+	e = ln.remote_GetSuccessor(ln.successors[1].Address, &s_address)
+	if (e!= nil) {
+		return e;
+	}
+	succ = new(Node)
+	succ.Address = s_address
+	succ.Id = GenHash(ln.config,s_address)
+	ln.successors[2] = succ 
+
 	e = ln.remote_StabilizeReplicasJoin(s_address,ln.Id,ln.data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
 	return e
 }
@@ -538,6 +557,28 @@ func (ln *LocalNode) Stabilize() {
 		new_succ.Address = predAddress
 		new_succ.Id = pred_hash
 		ln.successors[0] = new_succ
+
+		s_address := ""
+		e := ln.remote_GetSuccessor(ln.successors[0].Address, &s_address)
+		if (e!= nil) {
+			fmt.Println("New Successor communication failed")
+			return
+		}
+		succ := new(Node)
+		succ.Address = s_address
+		succ.Id = GenHash(ln.config,s_address)
+		ln.successors[1] = succ 
+
+		e = ln.remote_GetSuccessor(ln.successors[1].Address, &s_address)
+		if (e!= nil) {
+			fmt.Println("New Successor communication failed")
+			return
+		}
+		succ = new(Node)
+		succ.Address = s_address
+		succ.Id = GenHash(ln.config,s_address)
+		ln.successors[2] = succ 
+
 	}
 
 	err = ln.remote_Notify(ln.successors[0].Address, ln.Address)
