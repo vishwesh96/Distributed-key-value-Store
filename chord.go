@@ -127,7 +127,6 @@ func (ln *LocalNode) Join(address string) error{
 	s_address := ""
 	e := ln.remote_FindSuccessor(address, ln.Address, &s_address)
 	if (e!= nil) {
-
 		return e;
 	}
 
@@ -440,3 +439,17 @@ func randStabilize(conf Config) time.Duration {
 	r := rand.Float64()
 	return time.Duration((r * float64(max-min)) + float64(min))
 }
+
+func (ln * LocalNode) ReadKey(key string, val *string) error{
+	var leader string
+	e := ln.FindSuccessor(key, leader *string)
+	if e!=nil {
+		return e
+	}
+	ln.remote_ReadKeyLeader(leader,key,val)
+
+}
+
+func (ln *LocalNode) ReadKeyLeader(key string,val *string){
+}
+	
