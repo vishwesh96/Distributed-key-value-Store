@@ -12,8 +12,13 @@ type RPC_Leave struct {
 	Pred_data map[string]string
 	Replica_number int
 }
-type RPC_ReadKey struct {
+type RPC_RDKey struct {
 	key string
+	replica_number int
+}
+type RPC_WriteKey struct {
+	key string
+	val string
 	replica_number int
 }
 type hbeat struct{ 
@@ -29,7 +34,8 @@ type Node_RPC interface{
 	SendReplicasSuccessorJoin_Stub(args RPC_Join, emp_reply *struct{}) error 
 	SendReplicasSuccessorLeave_Stub(args RPC_Leave, emp_reply *struct{}) error
 	Heartbeat_Stub(rx_param hbeat, reply *hbeat) error
-	ReadKey_stub(args RPC_ReadKey, val *string) error
+	ReadKey_stub(args RPC_RDKey, val *string) error
+	WriteKEy_Stub(args RPC_WriteKey,emp_reply *struct{})
 }
 
 func (ln *LocalNode) FindSuccessor_Stub(key string, reply *string) error {
@@ -69,11 +75,27 @@ func(ln *LocalNode) Heartbeat_Stub(rx_param hbeat, reply *hbeat) error {
 	err:=ln.Heartbeat(rx_param, reply)
 	return err
 }
-func(ln *LocalNode) ReadKey_stub(args RPC_ReadKey,val *string) error {
+func(ln *LocalNode) ReadKey_stub(args RPC_RDKey,val *string) error {
 	if args.replica_number=0 {
 		err:=ln.ReadKeyLeader(args.key,val)
 	} else {
-		err:=ln.ReadKeyReplica(args.key,args.replica_number,val *string)
+		err:=ln.ReadKeyReplica(args.key,args.replica_number,val)
+	}
+	return err
+}
+func(ln *LocalNode) WriteKey_stub(args RPC_WriteKey,emp_reply *struct{}) error {
+	if args.replica_number=0 {
+		err:=ln.WriteKeyLeader(args.key,args.val)
+	} else {
+		err:=ln.WriteKeySuccessor(args.key,args.replica_number,args.val)
+	}
+	return err
+}
+func(ln *LocalNode) DeleteKey_stub(args RPC_RDKey,emp_reply *struct{}) error {
+	if args.replica_number=0 {
+		err:=ln.DeleteKeyLeader(args.key)
+	} else {
+		err:=ln.DeleteKeyReplica(args.key,args.replica_number)
 	}
 	return err
 }
