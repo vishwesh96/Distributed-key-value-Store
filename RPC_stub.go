@@ -13,13 +13,13 @@ type RPC_Leave struct {
 	Replica_number int
 }
 type RPC_RDKey struct {
-	key string
-	replica_number int
+	Key string
+	Replica_number int
 }
 type RPC_WriteKey struct {
-	key string
-	val string
-	replica_number int
+	Key string
+	Val string
+	Replica_number int
 }
 type hbeat struct{ 
 	Rx_time time.Time
@@ -34,8 +34,9 @@ type Node_RPC interface{
 	SendReplicasSuccessorJoin_Stub(args RPC_Join, emp_reply *struct{}) error 
 	SendReplicasSuccessorLeave_Stub(args RPC_Leave, emp_reply *struct{}) error
 	Heartbeat_Stub(rx_param hbeat, reply *hbeat) error
-	ReadKey_stub(args RPC_RDKey, val *string) error
-	WriteKEy_Stub(args RPC_WriteKey,emp_reply *struct{})
+	ReadKey_Stub(args RPC_RDKey, val *string) error
+	WriteKey_Stub(args RPC_WriteKey,emp_reply *struct{}) error
+	DeleteKey_Stub(args RPC_RDKey, emp_reply *struct{}) error
 }
 
 func (ln *LocalNode) FindSuccessor_Stub(key string, reply *string) error {
@@ -75,27 +76,30 @@ func(ln *LocalNode) Heartbeat_Stub(rx_param hbeat, reply *hbeat) error {
 	err:=ln.Heartbeat(rx_param, reply)
 	return err
 }
-func(ln *LocalNode) ReadKey_stub(args RPC_RDKey,val *string) error {
-	if args.replica_number=0 {
-		err:=ln.ReadKeyLeader(args.key,val)
+func(ln *LocalNode) ReadKey_Stub(args RPC_RDKey,val *string) error {
+	if args.Replica_number==0 {
+		err:=ln.ReadKeyLeader(args.Key,val)
+		return err
 	} else {
-		err:=ln.ReadKeyReplica(args.key,args.replica_number,val)
+		err:=ln.ReadKeyReplica(args.Key,args.Replica_number,val)
+		return err
 	}
-	return err
 }
-func(ln *LocalNode) WriteKey_stub(args RPC_WriteKey,emp_reply *struct{}) error {
-	if args.replica_number=0 {
-		err:=ln.WriteKeyLeader(args.key,args.val)
+func(ln *LocalNode) WriteKey_Stub(args RPC_WriteKey,emp_reply *struct{}) error {
+	if args.Replica_number==0 {
+		err:=ln.WriteKeyLeader(args.Key,args.Val)
+		return err
 	} else {
-		err:=ln.WriteKeySuccessor(args.key,args.replica_number,args.val)
+		err:=ln.WriteKeySuccessor(args.Key,args.Val,args.Replica_number)
+		return err
 	}
-	return err
 }
-func(ln *LocalNode) DeleteKey_stub(args RPC_RDKey,emp_reply *struct{}) error {
-	if args.replica_number=0 {
-		err:=ln.DeleteKeyLeader(args.key)
+func(ln *LocalNode) DeleteKey_Stub(args RPC_RDKey,emp_reply *struct{}) error {
+	if args.Replica_number==0 {
+		err:=ln.DeleteKeyLeader(args.Key)
+		return err
 	} else {
-		err:=ln.DeleteKeyReplica(args.key,args.replica_number)
+		err:=ln.DeleteKeySuccessor(args.Key,args.Replica_number)
+		return err
 	}
-	return err
 }

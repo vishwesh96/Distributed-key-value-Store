@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/rpc"
 	"time"
-	"strconv"
 	"math/rand"
 )
 
@@ -43,6 +42,7 @@ type LocalNode struct {
 	config Config
 	// stabilized  time.Time
 	timer       *time.Timer
+	Prev_read int
 }
 
 func DefaultConfig() Config {

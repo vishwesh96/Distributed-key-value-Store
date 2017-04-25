@@ -1,53 +1,43 @@
 package kvstore
 
-import (
-	"bytes"
-	"crypto/sha1"
-	"errors"
-	"fmt"
-	"hash"
-	"log"
-	"net"
-	"net/http"
-	"net/rpc"
-	"time"
-	"math/rand"
-)
+import "errors"
+import "strconv"
 
 
 func (ln * LocalNode) ReadKey(key string, val *string) error{
-	var leader string
-	e := ln.FindSuccessor(key, leader *string)
+	leader := new(string)
+	e := ln.FindSuccessor(key, leader)
 	if e!=nil {
 		return e
 	}
-	ln.remote_ReadKey(leader,key,0,val)
-
+	ln.remote_ReadKey(*leader,key,0,val)
+	return nil
 }
 
-func (ln *LocalNode) ReadKeyLeader(key string,val *string){
+func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 	//Trivial Load Balancing
 	var to_read int
-	if ln.prev_read==2 {
+	if ln.Prev_read==2 {
 		to_read=0
 	} else {
-		to_read=ln.prev_read+1
+		to_read=ln.Prev_read+1
 	} 
 
 	if to_read==0 {
 		*val=ln.data[0][key]
 	} else {
 		if to_read==1 {
-			remote_ReadKey(ln.successors[0].address,key,1,val)
+			ln.remote_ReadKey((ln.successors[0]).Address,key,1,val)
 		} else {
-			remote_ReadKey(ln.successor[1].address,key,2,val)
+			ln.remote_ReadKey((ln.successors[1]).Address,key,2,val)
 		}
 	} 
-
+	return nil
 }
 
-func (ln *LocalNode) ReadKeyReplica(key string, replica_num int, val *string){
+func (ln *LocalNode) ReadKeyReplica(key string, replica_num int, val *string) error{
 	*val=ln.data[replica_num][key]
+	return nil
 }	
 
 

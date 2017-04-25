@@ -163,9 +163,9 @@ func(ln *LocalNode) remote_ReadKey(address string,key string,replica_number int,
         return err
     }
     var args RPC_RDKey
-    args.key=key
-    args.replica_number=replica_number
-    Async_Call := t.Go("Node_RPC.ReadKey_stub",args,reply,nil)
+    args.Key=key
+    args.Replica_number=replica_number
+    Async_Call := t.Go("Node_RPC.ReadKey_stub",args,val,nil)
     err=Async_Call.Error
     if err != nil {
         log.Println("sync Call error in remote_ReadKey:", err) 
@@ -182,12 +182,11 @@ func(ln *LocalNode) remote_WriteKey(address string,key string,val string,replica
         return err
     }
     var args RPC_WriteKey
-    args.key=key
-    args.replica_number=replica_number
-    args.val=val
-    emp_reply := *struct{}
+    args.Key=key
+    args.Replica_number=replica_number
+    args.Val=val
+    emp_reply := new(struct{})
     err = t.Call("Node_RPC.WriteKey_stub",args,emp_reply)
-    err=Async_Call.Error
     if err != nil {
         log.Println("sync Call error in remote_WriteKey:", err) 
         return err
@@ -203,9 +202,9 @@ func(ln *LocalNode) remote_DeleteKey(address string,key string,replica_number in
         return err
     }
     var args RPC_RDKey
-    args.key=key
-    args.replica_number=replica_number
-    emp_reply := struct{}
+    args.Key=key
+    args.Replica_number=replica_number
+    emp_reply := new(struct{})
     err = t.Call("Node_RPC.DeleteKey_stub",args,emp_reply)
     if err != nil {
         log.Println("sync Call error in remote_DeleteKey:", err) 
