@@ -132,7 +132,6 @@ func (ln *LocalNode) Join(address string) error{
 	s_address := ""
 	e := ln.remote_FindSuccessor(address, ln.Address, &s_address)
 	if (e!= nil) {
-
 		return e;
 	}
 	succ := new(Node)
@@ -484,4 +483,18 @@ func (ln *LocalNode) SendReplicasSuccessorLeave(pred_data map[string]string,repl
 	
 	}
 	return e
+}
+
+func (ln * LocalNode) ReadKey(key string, val *string) error{
+	var leader string
+	e := ln.FindSuccessor(key, leader *string)
+	if e!=nil {
+		return e
+	}
+	ln.remote_ReadKeyLeader(leader,key,val)
+
+}
+
+func (ln *LocalNode) ReadKeyLeader(key string,val *string){
+	
 }
