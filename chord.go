@@ -118,9 +118,13 @@ func (ln *LocalNode) Join(address string) {
 	succ.Address = s_address
 	succ.Id = GenHash(ln.config,s_address)
 	successors[0] = succ 
-	remote_StabilizeReplicasJoin(s_address,ln.Id,data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
+	e = remote_StabilizeReplicasJoin(s_address,ln.Id,data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
 }
 
+func (ln *LocalNode) Leave(address string) {
+	// add relevant code 
+	e = StabilizeReplicasLeave()			//assuming successor exists
+}
 
 func (ln *LocalNode) FindSuccessor_stub(key string, reply *string) error {
 	err := ln.FindSuccessor(key,reply)
@@ -292,7 +296,7 @@ func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred []map[string]str
 		return errors.New("Doesn't have 3 replicas")
 	}
 	new_map = SplitMap(data[0],id)
-	
+
 	data_pred[0] = new_map
 	data_pred[1] = data[1]
 	data_pred[2] = data[2]
@@ -300,12 +304,20 @@ func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred []map[string]str
 	data[2] = data[1]
 	data[1] = new_map	
 
-	remote_SendReplicasSuccessor(successors[0].Address,id,1)			
-	remote_SendReplicasSuccessor(successors[1].Address,id,2)			
+	e0 = remote_SendReplicasSuccessorJoin(successors[0].Address,id,1)			
+	e1 = remote_SendReplicasSuccessorJoin(successors[1].Address,id,2)	
+
+	if e0 != nil{
+		return e0
+	}		
+	if e1 != nil{
+		return e1
+	}
+	return nil
 }
 
 //RPC
-func (ln *LocalNode) SendReplicasSuccessor(id []byte,replica_number int) error {
+func (ln *LocalNode) SendReplicasSuccessorJoin(id []byte,replica_number int) error {
 	if len(data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
 	}
@@ -315,5 +327,47 @@ func (ln *LocalNode) SendReplicasSuccessor(id []byte,replica_number int) error {
 	} else if replica_number = 2 {
 		new_map = SplitMap(data[2],id)
 	}
+	return nil
 }
 
+
+func (ln *LocalNode) StabilizeReplicasLeave() error {
+	e0 = remote_SendReplicasSuccessorLeave(successors[0].Address,data[2],0)
+	e1 = remote_SendReplicasSuccessorLeave(successors[1].Address,data[1],1)
+	e2 = remote_SendReplicasSuccessorLeave(successors[2].Address,data[0],2)
+	if e0 != nil{
+		return e0
+	}
+	if e1 != nil{
+		return e1
+	}
+	if e2 != nil{
+		return e2
+	}
+	return nil
+}
+
+//RPC
+func (ln *LocalNode) SendReplicasSuccessorLeave(pred_data map[string]string,replica_number int){
+	switch replica_number {
+		case 0 :
+		{
+			e = AddMap(data[0],data[1])
+			data[1] = data[2]
+			data[2] = pred_data
+		}
+		case 1 : 
+		{
+			e = AddMap(data[1],data[2])
+			data[2] = pred_data
+		}
+		case 2 : 
+		{
+			e = AddMap(data[2],pred_data)
+		}
+		default :
+		{
+			//TODO
+		}
+	return e
+}
