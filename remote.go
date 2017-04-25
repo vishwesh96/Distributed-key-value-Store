@@ -54,7 +54,7 @@ func (ln *LocalNode) remote_GetSuccessor (address string, reply *string) error {
 	return nil	
 }
 func (ln *LocalNode) remote_Notify (address string, message string) error {
-		var complete_address = address
+	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
         log.Fatal("dialing error in remote_Notify:", err)
@@ -153,4 +153,62 @@ func(ln *LocalNode) remote_Heartbeat(address string, rx_param hbeat, reply *hbea
     	return err
 	}
 	return nil	
+}
+
+func(ln *LocalNode) remote_ReadKey(address string,key string,replica_number int,val *string) error {
+    var complete_address = address
+    t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Fatal("dialing error in remote_ReadKey:", err)
+        return err
+    }
+    var args RPC_RDKey
+    args.Key=key
+    args.Replica_number=replica_number
+    Async_Call := t.Go("Node_RPC.ReadKey_stub",args,val,nil)
+    err=Async_Call.Error
+    if err != nil {
+        log.Println("sync Call error in remote_ReadKey:", err) 
+        return err
+    }
+    return nil     
+}
+
+func(ln *LocalNode) remote_WriteKey(address string,key string,val string,replica_number int) error {
+    var complete_address = address
+    t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Fatal("dialing error in remote_WriteKey:", err)
+        return err
+    }
+    var args RPC_WriteKey
+    args.Key=key
+    args.Replica_number=replica_number
+    args.Val=val
+    emp_reply := new(struct{})
+    err = t.Call("Node_RPC.WriteKey_stub",args,emp_reply)
+    if err != nil {
+        log.Println("sync Call error in remote_WriteKey:", err) 
+        return err
+    }
+    return nil     
+}
+
+func(ln *LocalNode) remote_DeleteKey(address string,key string,replica_number int) error {
+    var complete_address = address
+    t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Fatal("dialing error in remote_DeleteKey:", err)
+        return err
+    }
+    var args RPC_RDKey
+    args.Key=key
+    args.Replica_number=replica_number
+    emp_reply := new(struct{})
+    err = t.Call("Node_RPC.DeleteKey_stub",args,emp_reply)
+    if err != nil {
+        log.Println("sync Call error in remote_DeleteKey:", err) 
+        return err
+    }
+    return nil     
 }

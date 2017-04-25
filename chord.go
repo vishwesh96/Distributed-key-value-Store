@@ -42,6 +42,7 @@ type LocalNode struct {
 	config Config
 	// stabilized  time.Time
 	timer       *time.Timer
+	Prev_read int
 }
 
 func DefaultConfig() Config {
@@ -270,6 +271,7 @@ func (ln *LocalNode) StabilizeReplicasJoin(id []byte, ret_args *RPC_StabJoin) er
 	if len(ln.data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
 	}
+	
 	new_map := ln.SplitMap(ln.data[0],id)
 	((*ret_args).Data_pred)[0] = new_map
 	((*ret_args).Data_pred)[1] = ln.data[1]
@@ -278,7 +280,8 @@ func (ln *LocalNode) StabilizeReplicasJoin(id []byte, ret_args *RPC_StabJoin) er
 	ln.data[2] = ln.data[1]
 	ln.data[1] = new_map	
 
-	e0 := ln.remote_SendReplicasSuccessorJoin(ln.successors[0].Address,id,1)	
+
+ 	e0 := ln.remote_SendReplicasSuccessorJoin(ln.successors[0].Address,id,1)	
 	if e0 != nil{
 		return e0
 	}		
@@ -491,16 +494,4 @@ func betweenRightIncl(id1, id2, key []byte) bool {
 		bytes.Compare(id2, key) >= 0
 }
 
-// func (ln * LocalNode) ReadKey(key string, val *string) error{
-// 	var leader string
-// 	e := ln.FindSuccessor(key, &leader)
-// 	if e!=nil {
-// 		return e
-// 	}
-// 	ln.remote_ReadKeyLeader(leader,key,val)
-
-// }
-
-// func (ln *LocalNode) ReadKeyLeader(key string,val *string){
-// }
 	
