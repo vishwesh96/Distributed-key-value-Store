@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"time"
+	"errors"
 )
 
 type Config struct {
@@ -40,6 +41,7 @@ type LocalNode struct {
 	Node
 	successors  []*Node
 	finger      []*Node
+	data		[]map[string]string
 	// last_finger int
 	predecessor *Node
 	config Config
@@ -101,6 +103,7 @@ func GenHash(conf Config, address string) []byte {
 	hash := conf.HashFunc()
 	hash.Write([]byte(address))
 
+
 	// Use the hash as the Id
 	return hash.Sum(nil)
 }
@@ -115,6 +118,13 @@ func (ln *LocalNode) Create() {
 func (ln *LocalNode) Join(address string) {
 	// var n Node
 	// n.address
+	predecessor = nil
+	s_address, e := FindSuccessor_Stub(address, ln.Address)
+	var succ Node
+	succ.Address = s_address
+	succ.Id = GenHash(ln.config,s_address)
+	successors[0] = succ 
+	remote_StabilizeReplicasJoin(s_address,ln.Id,data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
 }
 
 
@@ -285,3 +295,59 @@ func (ln *LocalNode) check_predecessor() {
 func (ln *LocalNode) stabilize() {
 	
 }
+
+func (ln *LocalNode) SplitMap(data map[string]string, id []byte) map[string]string{			//deletes from data and inserts in to new_map and returns
+	var new_map map[string]string
+	for key,val := range data{
+		if(GenHash(ln.config,key).compare(id)<=0){
+			new_map[key] = val
+			delete(data,key)
+		}
+	}
+	return new_map	
+}
+
+func (ln *LocalNode) AddMap(target map[string]string, source map[string]string) error{
+	for key,val := range source{
+		_ , ok = target[key]
+		if ok == true {
+			return errors.New("Key already in target map")
+		}else{
+			target[key] = val
+		}
+	}
+	return nil
+}
+
+//RPC
+func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred []map[string]string) error {
+
+	if len(data) != 3 {
+		return errors.New("Doesn't have 3 replicas")
+	}
+	new_map = SplitMap(data[0],id)
+	
+	data_pred[0] = new_map
+	data_pred[1] = data[1]
+	data_pred[2] = data[2]
+
+	data[2] = data[1]
+	data[1] = new_map	
+
+	remote_SendReplicasSuccessor(successors[0].Address,id,1)			
+	remote_SendReplicasSuccessor(successors[1].Address,id,2)			
+}
+
+//RPC
+func (ln *LocalNode) SendReplicasSuccessor(id []byte,replica_number int) error {
+	if len(data) != 3 {
+		return errors.New("Doesn't have 3 replicas")
+	}
+	if replica_number == 1 {
+		new_map = SplitMap(data[1],id)
+		data[2] = new_map
+	} else if replica_number = 2 {
+		new_map = SplitMap(data[2],id)
+	}
+}
+
