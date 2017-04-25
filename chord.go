@@ -109,26 +109,52 @@ func (ln *LocalNode) Ping_stub(emp_arg struc{},emp_reply *struct{}) error {
 func (ln *LocalNode) FindSuccessor(key string, reply *string) error{
 	id_hash := GenHash(ln.config, key)
 	my_hash := ln.Id
-	succ_hash := successors[0].Id
+	succ_hash := ln.successors[0].Id
 	if (bytes.compare(id_hash,my_hash)>0 && bytes.compare(id_hash,succ_hash)<=0) {
-		return (successors[0].address, nil)
+		*reply = ln.successors[0].address
+		return nil
 	}
-	s_address, e := FindSuccessor_Stub(successors[0].address, key)
-	*reply = s_address
-	return e
+	err := remote_FindSuccessor(ln.successors[0].address, key, reply)
+	return err
 }
 
 func (ln *LocalNode) GetPredecessor(reply *string) (error) {
-	*reply=predecessor.Address
+	if (ln.predecessor == nil) {
+		return errors.New("Predecessor not found")
+	}
+	*reply=ln.predecessor.Address
 	return nil
 }
 
 func (ln *LocalNode) GetSuccessor(reply *string) (error) {
-	*reply=successors[0].Address
-	return nil
+	for _,successor := range ln.successors {
+		if (successor!=nil) {
+			*reply=successor.Address
+			return nil
+		}
+	}
+	
+	return errors.New("Successor not found")
 }
 
 func (ln *LocalNode) Notify(message string) (error) {
+	flag := false
+
+	if (ln.predecessor == nil) {
+		flag = true
+	}
+	if (!flag) {
+		pred_hash := GenHash(ln.config, ln.predecessor.Address)
+		new_hash := GenHash(ln.config, message)
+		my_hash := ln.Id
+		if (bytes.compare(new_hash, pred_hash) > 0 && bytes.compare(new_hash, my_hash) < 0) {
+			flag = true
+		}
+	}
+
+	if (flag) {
+		ln.predecessor = &Node{GenHash(ln.config, message), message}
+	}
 	return nil
 }
 
@@ -154,9 +180,11 @@ func (ln *LocalNode) remote_Ping (address string) error {
 }
 
 func (ln *LocalNode) check_predecessor() {
-	err := Ping_Stub(predecessor.address)
-	if (err!=nil) {
-		predecessor = nil
+	if (ln.predecessor != nil) {
+		err := remote_Ping(ln.predecessor.address)
+		if (err!=nil) {
+			predecessor = nil
+		}
 	}
 
 }
