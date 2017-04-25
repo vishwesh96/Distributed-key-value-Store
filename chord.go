@@ -118,7 +118,7 @@ func (ln *LocalNode) Join(address string) {
 	succ.Address = s_address
 	succ.Id = GenHash(ln.config,s_address)
 	successors[0] = succ 
-	StabilizeReplicasJoin_Stub(s_address,ln.Address,ln.Id)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
+	remote_StabilizeReplicasJoin(s_address,ln.Id,data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
 }
 
 
@@ -285,18 +285,26 @@ func (ln *LocalNode) AddMap(target map[string]string, source map[string]string) 
 	return nil
 }
 
-func (ln *LocalNode) StabilizeReplicasJoin(id []byte) error {
+//RPC
+func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred []map[string]string) error {
+
 	if len(data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
 	}
 	new_map = SplitMap(data[0],id)
-	SendReplicasPredecessor_Stub(predecessor,new_map,data[1],data[2])		//send data[1] and data[2] to predecessor
+	
+	data_pred[0] = new_map
+	data_pred[1] = data[1]
+	data_pred[2] = data[2]
+
 	data[2] = data[1]
 	data[1] = new_map	
-	SendReplicasSuccessor_Stub(successors[0],id,1)			
-	SendReplicasSuccessor_Stub(successors[1],id,2)			
+
+	remote_SendReplicasSuccessor(successors[0].Address,id,1)			
+	remote_SendReplicasSuccessor(successors[1].Address,id,2)			
 }
 
+//RPC
 func (ln *LocalNode) SendReplicasSuccessor(id []byte,replica_number int) error {
 	if len(data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
@@ -309,8 +317,3 @@ func (ln *LocalNode) SendReplicasSuccessor(id []byte,replica_number int) error {
 	}
 }
 
-func (ln *LocalNode) SendReplicasPredecessor(data0 map[string]string, data1 map[string]string, data2 map[string]string){
-	data[0] = data0
-	data[1] = data1
-	data[2] = data2
-}		
