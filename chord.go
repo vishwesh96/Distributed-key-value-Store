@@ -67,6 +67,7 @@ func (ln *LocalNode) Init(config Config) {
 	// Initialize all state
 	ln.successors = make([]*Node, ln.config.NumSuccessors)
 	ln.finger = make([]*Node, ln.config.hashBits)
+	ln.data = make([]map[string]string,replicas+1)
  	// // Register with the RPC mechanism
 	done := make(chan string)
 	go ln.startHTTPserver(done,ln.Address)
@@ -240,6 +241,7 @@ func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred []map[string]str
 	if len(ln.data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
 	}
+	
 	new_map := ln.SplitMap(ln.data[0],id)
 
 	data_pred[0] = new_map
@@ -249,7 +251,8 @@ func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred []map[string]str
 	ln.data[2] = ln.data[1]
 	ln.data[1] = new_map	
 
-	e0 := ln.remote_SendReplicasSuccessorJoin(ln.successors[0].Address,id,1)	
+
+ 	e0 := ln.remote_SendReplicasSuccessorJoin(ln.successors[0].Address,id,1)	
 	if e0 != nil{
 		return e0
 	}		
@@ -406,3 +409,34 @@ func (ln * LocalNode) ReadKey(key string, val *string) error{
 func (ln *LocalNode) ReadKeyLeader(key string,val *string){
 }
 	
+func (ln *LocalNode) WriteKey(key string, val string) error{
+	var leader string
+	e := ln.FindSuccessor(key, leader *string)
+	if e!=nil {
+		return e
+	}
+	e = ln.remote_WriteKeyLeader(leader,key,val)
+
+	return e
+}
+
+func (ln * LocalNode) WriteKeyLeader(key string, val string){
+		ln.data[0][key] = val
+		//check successor exists
+		e0 := ln.remote_WriteKeySuccessor(ln.successors[0].Address,key,val,1)
+		if e0!= nil {
+			return e0
+		}
+		e1 := ln.remote_WriteKeySuccessor(ln.successors[1].Address,key,val,2)
+		if e1!= nil {
+			return e1
+		}
+}
+
+func (ln * LocalNode) WriteKeySuccessor(key string, val string, replica_number int) error{
+	if len(ln.data < replica_number) {
+		return errors.New("Not enough replicas")
+	}
+	ln.data[replica_number][key] = val
+	return nil
+}
