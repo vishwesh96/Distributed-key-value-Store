@@ -154,3 +154,22 @@ func(ln *LocalNode) remote_Heartbeat(address string, rx_param hbeat, reply *hbea
 	}
 	return nil	
 }
+
+func(ln *LocalNode) remote_ReadKey(address string,key string,replica_number int,val *string) error {
+    var complete_address = address
+    t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Fatal("dialing error in remote_ReadKey:", err)
+        return err
+    }
+    var args RPC_ReadKey
+    args.key=key
+    args.replica_number=replica_number
+    Async_Call := t.Go("Node_RPC.ReadKey_stub",args,reply,nil)
+    err=Async_Call.Error
+    if err != nil {
+        log.Println("sync Call error in remote_ReadKey:", err) 
+        return err
+    }
+    return nil     
+}
