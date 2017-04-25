@@ -33,6 +33,7 @@ type Node struct {
 
 type LocalNode struct {
 	Node
+	Port 		string
 	successors  []*Node
 	finger      []*Node
 	data		[]map[string]string
@@ -40,14 +41,14 @@ type LocalNode struct {
 	predecessor *Node
 	config Config
 	// stabilized  time.Time
-	 timer       *time.Timer
+	timer       *time.Timer
 }
 
 func DefaultConfig() Config {
 	return Config{
 		sha1.New, // SHA1
-		time.Duration(1 * time.Second),
-		time.Duration(3 * time.Second),
+		time.Duration(500 * time.Millisecond),
+		time.Duration(2 * time.Second),
 		3,   // 3 successors
 		2,   // 3 Replicas
 		// nil, // No delegate
@@ -67,23 +68,27 @@ func (ln *LocalNode) Init(config Config) {
 	// Initialize all state
 	ln.successors = make([]*Node, ln.config.NumSuccessors)
 	ln.finger = make([]*Node, ln.config.hashBits)
+	ln.data = make([]map[string]string,ln.config.NumReplicas+1)
  	// // Register with the RPC mechanism
 	done := make(chan string)
 	go ln.startHTTPserver(done,ln.Address)
-    fmt.Println(<-done)
+    // fmt.Println(<-done)
+    fmt.Println("Initialised localNode")
 	// ln.ring.transport.Register(&ln.Node, ln)
 }
 
 func (ln *LocalNode) startHTTPserver(done_chan chan<- string, address string) {
 	log.Println("HTTP Server started for node ",address)
-	iface:=ln
+	// iface:=ln
+	var iface Node_RPC
+	iface = ln
 	server_http := rpc.NewServer()
 	registerServer(server_http,iface)
 	// registers an HTTP handler for RPC messages on rpcPath, and a debugging handler on debugPath
 	server_http.HandleHTTP("/", "/debug")
 
 	// Listen for incoming tcp packets on specified port.
-	l, e := net.Listen("tcp", ":6000")
+	l, e := net.Listen("tcp", ln.Port)
 	if e != nil {
 		log.Fatal("listen error:", e)
 	}
@@ -106,12 +111,18 @@ func (ln *LocalNode) Create() {
 	ln.config.hashBits = ln.config.HashFunc().Size() * 8 //??
 
 	ln.successors[0] = &ln.Node
+	ln.successors[1] = &ln.Node
+	ln.successors[2] = &ln.Node
 	ln.predecessor = nil
+
+	ln.Schedule()
 }
 
 func (ln *LocalNode) Join(address string) error{
 	// var n Node
 	// n.address
+
+	fmt.Println("Joining "+address)
 	ln.predecessor = nil
 	s_address := ""
 	e := ln.remote_FindSuccessor(address, ln.Address, &s_address)
@@ -119,10 +130,13 @@ func (ln *LocalNode) Join(address string) error{
 
 		return e;
 	}
+
+	fmt.Println("Found successor "+s_address)
 	succ := new(Node)
 	succ.Address = s_address
 	succ.Id = GenHash(ln.config,s_address)
 	ln.successors[0] = succ 
+	fmt.Println("Successor 0 Updated: " + ln.successors[0].Address)
 
 	e = ln.remote_GetSuccessor(ln.successors[0].Address, &s_address)
 	if (e!= nil) {
@@ -132,6 +146,7 @@ func (ln *LocalNode) Join(address string) error{
 	succ.Address = s_address
 	succ.Id = GenHash(ln.config,s_address)
 	ln.successors[1] = succ 
+	fmt.Println("Successor 1 Updated: " + ln.successors[1].Address)
 
 	e = ln.remote_GetSuccessor(ln.successors[1].Address, &s_address)
 	if (e!= nil) {
@@ -141,8 +156,9 @@ func (ln *LocalNode) Join(address string) error{
 	succ.Address = s_address
 	succ.Id = GenHash(ln.config,s_address)
 	ln.successors[2] = succ 
+	fmt.Println("Successor 2 Updated: " + ln.successors[2].Address)
 
-	e = ln.remote_StabilizeReplicasJoin(s_address,ln.Id,ln.data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
+	e = ln.remote_StabilizeReplicasJoin(s_address,ln.Id,&ln.data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
 	return e
 }
 
@@ -161,6 +177,10 @@ func (ln *LocalNode) FindSuccessor(key string, reply *string) error{
 	id_hash := GenHash(ln.config, key)
 	my_hash := ln.Id
 	succ_hash := ln.successors[0].Id
+	if (ln.Address == ln.successors[0].Address) {
+		*reply = ln.Address
+		return nil
+	}
 	if (bytes.Compare(id_hash,my_hash)>0 && bytes.Compare(id_hash,succ_hash)<=0) {
 		*reply = ln.successors[0].Address
 		return nil
@@ -205,6 +225,7 @@ func (ln *LocalNode) Notify(message string) (error) {
 
 	if (flag) {
 		ln.predecessor = &Node{GenHash(ln.config, message), message}
+		fmt.Println("Predecessor Updated: " + ln.predecessor.Address)
 	}
 	return nil
 }
@@ -236,16 +257,16 @@ func (ln *LocalNode) AddMap(target map[string]string, source map[string]string) 
 	return nil
 }
 
-func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred []map[string]string) error {
+func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred *[]map[string]string) error {
 
 	if len(ln.data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
 	}
 	new_map := ln.SplitMap(ln.data[0],id)
 
-	data_pred[0] = new_map
-	data_pred[1] = ln.data[1]
-	data_pred[2] = ln.data[2]
+	(*data_pred)[0] = new_map
+	(*data_pred)[1] = ln.data[1]
+	(*data_pred)[2] = ln.data[2]
 
 	ln.data[2] = ln.data[1]
 	ln.data[1] = new_map	
@@ -323,6 +344,7 @@ func (ln *LocalNode) check_predecessor() {
 		err := ln.remote_Ping(ln.predecessor.Address)
 		if (err!=nil) {
 			ln.predecessor = nil
+			fmt.Println("Predecessor Updated: nil")
 		}
 	}
 
@@ -331,55 +353,80 @@ func (ln *LocalNode) check_predecessor() {
 func (ln *LocalNode) Stabilize() {
 	ln.timer = nil
 
+	fmt.Println("Stabilize called")
+
 	defer ln.Schedule()
 
-	predAddress := ""
-	err := ln.remote_GetPredecessor(ln.successors[0].Address, &predAddress)
-
-	if (err!=nil) {
-		fmt.Println("Successor communication failed")
+	if err := ln.checkNewSuccessor(); err != nil {
+		fmt.Printf("Stabilize error: %s", err)
 		return
 	}
 
+	if (ln.successors[0].Address == ln.Address) {
+		return
+	}
+	
+	if err := ln.remote_Notify(ln.successors[0].Address, ln.Address); err!=nil {
+		fmt.Printf("Stabilize error: %s", err)
+		return
+	}
+
+	ln.check_predecessor()
+	
+}
+
+func (ln *LocalNode) checkNewSuccessor() error {
+	successor := ""
+	err := ln.GetSuccessor(&successor)
+	if (err!=nil) {
+		return err
+	}
+
+	predAddress := ""
+	err = ln.remote_GetPredecessor(successor, &predAddress)
+
+	if (err!=nil) {
+		return nil
+	}
+
 	pred_hash := GenHash(ln.config, predAddress)
-	succ_hash := ln.successors[0].Id
+	succ_hash := GenHash(ln.config, successor)
 	my_hash := ln.Id
+
+	ln.successors[0].Address = successor
+	ln.successors[0].Id = succ_hash
+
 
 	if (bytes.Compare(pred_hash, my_hash)>0 && bytes.Compare(pred_hash, succ_hash)<0) {
 		new_succ := new(Node)
 		new_succ.Address = predAddress
 		new_succ.Id = pred_hash
 		ln.successors[0] = new_succ
-
+		fmt.Println("Successor 0 Updated: " + ln.successors[0].Address)
 		s_address := ""
 		e := ln.remote_GetSuccessor(ln.successors[0].Address, &s_address)
 		if (e!= nil) {
-			fmt.Println("New Successor communication failed")
-			return
+			return e
 		}
 		succ := new(Node)
 		succ.Address = s_address
 		succ.Id = GenHash(ln.config,s_address)
 		ln.successors[1] = succ 
+		fmt.Println("Successor 1 Updated: " + ln.successors[1].Address)
 
 		e = ln.remote_GetSuccessor(ln.successors[1].Address, &s_address)
 		if (e!= nil) {
-			fmt.Println("New Successor communication failed")
-			return
+			return e
 		}
 		succ = new(Node)
 		succ.Address = s_address
 		succ.Id = GenHash(ln.config,s_address)
 		ln.successors[2] = succ 
+		fmt.Println("Successor 2 Updated: " + ln.successors[2].Address)
 
 	}
 
-	err = ln.remote_Notify(ln.successors[0].Address, ln.Address)
-	if (err!=nil) {
-		fmt.Println("Successor communication failed")
-		return
-	}
-
+	return nil
 }
 
 func (ln *LocalNode) Schedule() {
