@@ -10,8 +10,8 @@ import (
 	"net"
 	"net/http"
 	"net/rpc"
-	"math/rand"
 	"time"
+	"math/rand"
 )
 
 type Config struct {
@@ -24,12 +24,16 @@ type Config struct {
 	hashBits      int              // Bit size of the hash function
 }
 type RPC_Join struct {
-	id []byte
-	replica_number int
+	Id []byte
+	Replica_number int
 }
 type RPC_Leave struct {
-	pred_data map[string]string
-	replica_number int
+	Pred_data map[string]string
+	Replica_number int
+}
+type hbeat struct{ 
+	Rx_time time.Time
+	Node_info Node
 }
 type Node_RPC interface{
 	FindSuccessor_stub(key string, reply *string) error
@@ -39,6 +43,7 @@ type Node_RPC interface{
 	StabilizeReplicasJoin_stub(id []byte, data_pred []map[string]string) error 
 	SendReplicasSuccessorJoin_stub(args RPC_Join, emp_reply *struct{}) error 
 	SendReplicasSuccessorLeave_stub(args RPC_Leave, emp_reply *struct{}) error
+	Heartbeat_stub(rx_param hbeat, reply *hbeat) error
 }
 
 
@@ -57,7 +62,7 @@ type LocalNode struct {
 	predecessor *Node
 	config Config
 	// stabilized  time.Time
-	timer       *time.Timer
+	 timer       *time.Timer
 }
 
 func DefaultConfig() Config {
@@ -124,7 +129,6 @@ func (ln *LocalNode) Create() {
 
 	ln.successors[0] = &ln.Node
 	ln.predecessor = nil
-	ln.Schedule()
 }
 
 func (ln *LocalNode) Join(address string) error{
@@ -134,6 +138,7 @@ func (ln *LocalNode) Join(address string) error{
 	s_address := ""
 	e := ln.remote_FindSuccessor(address, ln.Address, &s_address)
 	if (e!= nil) {
+
 		return e;
 	}
 	succ := new(Node)
@@ -141,13 +146,7 @@ func (ln *LocalNode) Join(address string) error{
 	succ.Id = GenHash(ln.config,s_address)
 	ln.successors[0] = succ 
 	e = ln.remote_StabilizeReplicasJoin(s_address,ln.Id,ln.data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
-	if (e!= nil) {
-		return e;
-	}
-
-	ln.Stabilize()
-
-	return nil
+	return e
 }
 
 func (ln *LocalNode) Leave(address string) error{
@@ -176,19 +175,28 @@ func (ln *LocalNode) Ping_stub(emp_arg struct{},emp_reply *struct{}) error {
 	err:=ln.Ping()
 	return err
 }
-func (ln *LocalNode) StabilizeReplicasJoin_stub(id []byte, data_pred []map[string]string) error {
+func(ln *LocalNode) StabilizeReplicasJoin_stub(id []byte, data_pred []map[string]string) error {
 	err:= ln.StabilizeReplicasJoin(id,data_pred)
 	return err
 } 
-func (ln *LocalNode)	SendReplicasSuccessorJoin_stub(args RPC_Join, emp_reply *struct{}) error {
-	err:= ln.SendReplicasSuccessorJoin(args.id,args.replica_number)
+func(ln *LocalNode)	SendReplicasSuccessorJoin_stub(args RPC_Join, emp_reply *struct{}) error {
+	err:= ln.SendReplicasSuccessorJoin(args.Id,args.Replica_number)
 	return err
 }
-func (ln *LocalNode)	SendReplicasSuccessorLeave_stub(args RPC_Leave, emp_reply *struct{}) error {
-	err:= ln.SendReplicasSuccessorLeave(args.pred_data,args.replica_number)
+func(ln *LocalNode)	SendReplicasSuccessorLeave_stub(args RPC_Leave, emp_reply *struct{}) error {
+	err:= ln.SendReplicasSuccessorLeave(args.Pred_data,args.Replica_number)
 	return err	
 }
-
+func(ln *LocalNode) Heartbeat_stub(rx_param hbeat, reply *hbeat) error {
+	err:=ln.Heartbeat(rx_param, reply)
+	return err
+}
+func(ln *LocalNode) Heartbeat(rx_param hbeat, reply *hbeat ) error {
+	fmt.Println(rx_param.Node_info.Address, " Active at Time: ", rx_param.Rx_time)
+	(*reply).Node_info=ln.Node
+	(*reply).Rx_time=time.Now()
+	return nil
+}
 func (ln *LocalNode) FindSuccessor(key string, reply *string) error{
 	id_hash := GenHash(ln.config, key)
 	my_hash := ln.Id
@@ -346,8 +354,8 @@ func (ln *LocalNode) remote_SendReplicasSuccessorJoin(address string, id []byte,
     }
     emp_reply:=new(struct{})
     var args RPC_Join
-    args.id=id
-    args.replica_number=replica_number
+    args.Id=id
+    args.Replica_number=replica_number
     err = t.Call("Node_RPC.SendReplicasSuccessorJoin",args,emp_reply)
 	if err != nil {
     	log.Println("sync Call error in remote_SendReplicasSuccessorJoin:", err) 
@@ -364,8 +372,8 @@ func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data
     }
     emp_reply:=new(struct{})
     var args RPC_Leave
-    args.pred_data=pred_data
-    args.replica_number=replica_number
+    args.Pred_data=pred_data
+    args.Replica_number=replica_number
     err = t.Call("Node_RPC.SendReplicasSuccessorLeave_stub",args,emp_reply)
 	if err != nil {
     	log.Println("sync Call error in remote_SendReplicasSuccessorLeave:", err) 
@@ -374,7 +382,24 @@ func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data
 	return nil	
 }
 
-
+func(ln *LocalNode) remote_Heartbeat(address string, rx_param hbeat, reply *hbeat ) error {
+	var complete_address = address+":6000"
+	t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Fatal("dialing error in remote_Heartbeat:", err)
+        return err
+    }
+    var args hbeat
+    args.Node_info=ln.Node
+    args.Rx_time=time.Now()
+    Async_Call := t.Go("Node_RPC.Heartbeat_stub",args,reply,nil)
+	err=Async_Call.Error
+	if err != nil {
+    	log.Println("sync Call error in remote_Heartbeat:", err) 
+    	return err
+	}
+	return nil	
+}
 
 func (ln *LocalNode) SplitMap(data map[string]string, id []byte) map[string]string{			//deletes from data and inserts in to new_map and returns
 	var new_map map[string]string
