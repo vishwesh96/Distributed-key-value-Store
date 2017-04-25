@@ -84,14 +84,14 @@ func (ln *LocalNode) remote_Ping (address string) error {
 	}
 	return nil	
 }
-func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, data_pred *[]map[string]string) error {
+func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, ret_args *RPC_StabJoin) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
         log.Fatal("dialing error in remote_StabilizeReplicasJoin:", err)
         return err
     }
-    err = t.Call("Node_RPC.StabilizeReplicasJoin_Stub",id,data_pred)
+    err = t.Call("Node_RPC.StabilizeReplicasJoin_Stub",id,ret_args)
 	if err != nil {
     	log.Println("sync Call error in remote_StabilizeReplicasJoin:", err) 
     	return err
