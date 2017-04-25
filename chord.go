@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/rpc"
 	"time"
+	"math/rand"
 )
 
 type Config struct {
@@ -21,23 +22,6 @@ type Config struct {
 	NumReplicas	  int 			   // Number of replicas
 	// Delegate      Delegate         // Invoked to handle ring events
 	hashBits      int              // Bit size of the hash function
-}
-type RPC_Join struct {
-	id []byte
-	replica_number int
-}
-type RPC_Leave struct {
-	pred_data map[string]string
-	replica_number int
-}
-type Node_RPC interface{
-	FindSuccessor_stub(key string, reply *string) error
-	GetPredecessor_stub(emp_arg struct{}, reply *string) error
-	Notify_stub(message string, emp_reply *struct{}) error
-	Ping_stub(emp_arg struct{},emp_reply *struct{}) error
-	StabilizeReplicasJoin_stub(id []byte, data_pred []map[string]string) error 
-	SendReplicasSuccessorJoin_stub(args RPC_Join, emp_reply *struct{}) error 
-	SendReplicasSuccessorLeave_stub(args RPC_Leave, emp_reply *struct{}) error
 }
 
 
@@ -56,7 +40,7 @@ type LocalNode struct {
 	predecessor *Node
 	config Config
 	// stabilized  time.Time
-	// timer       *time.Timer
+	 timer       *time.Timer
 }
 
 func DefaultConfig() Config {
@@ -65,7 +49,7 @@ func DefaultConfig() Config {
 		time.Duration(1 * time.Second),
 		time.Duration(3 * time.Second),
 		3,   // 3 successors
-		3,   // 3 Replicas
+		2,   // 3 Replicas
 		// nil, // No delegate
 		16, // 16bit hash function
 	}
@@ -138,6 +122,25 @@ func (ln *LocalNode) Join(address string) error{
 	succ.Address = s_address
 	succ.Id = GenHash(ln.config,s_address)
 	ln.successors[0] = succ 
+
+	e = ln.remote_GetSuccessor(ln.successors[0].Address, &s_address)
+	if (e!= nil) {
+		return e;
+	}
+	succ = new(Node)
+	succ.Address = s_address
+	succ.Id = GenHash(ln.config,s_address)
+	ln.successors[1] = succ 
+
+	e = ln.remote_GetSuccessor(ln.successors[1].Address, &s_address)
+	if (e!= nil) {
+		return e;
+	}
+	succ = new(Node)
+	succ.Address = s_address
+	succ.Id = GenHash(ln.config,s_address)
+	ln.successors[2] = succ 
+
 	e = ln.remote_StabilizeReplicasJoin(s_address,ln.Id,ln.data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
 	return e
 }
@@ -147,40 +150,12 @@ func (ln *LocalNode) Leave(address string) error{
 	e := ln.StabilizeReplicasLeave()			//assuming successor exists
 	return e
 }
-
-func (ln *LocalNode) FindSuccessor_stub(key string, reply *string) error {
-	err := ln.FindSuccessor(key,reply)
-	return err
+func(ln *LocalNode) Heartbeat(rx_param hbeat, reply *hbeat ) error {
+	fmt.Println(rx_param.Node_info.Address, " Active at Time: ", rx_param.Rx_time)
+	(*reply).Node_info=ln.Node
+	(*reply).Rx_time=time.Now()
+	return nil
 }
-func (ln *LocalNode) GetPredecessor_stub(emp_arg struct{}, reply *string) error {
-	err := ln.GetPredecessor(reply)
-	return err
-}
-func (ln *LocalNode) GetSuccessor_stub(emp_arg struct{}, reply *string) error {
-	err := ln.GetSuccessor(reply)
-	return err
-}
-func (ln *LocalNode) Notify_stub(message string, emp_reply *struct{}) error {
-	err := ln.Notify(message)
-	return err
-}
-func (ln *LocalNode) Ping_stub(emp_arg struct{},emp_reply *struct{}) error {
-	err:=ln.Ping()
-	return err
-}
-func(ln *LocalNode) StabilizeReplicasJoin_stub(id []byte, data_pred []map[string]string) error {
-	err:= ln.StabilizeReplicasJoin(id,data_pred)
-	return err
-} 
-func(ln *LocalNode)	SendReplicasSuccessorJoin_stub(args RPC_Join, emp_reply *struct{}) error {
-	err:= ln.SendReplicasSuccessorJoin(args.id,args.replica_number)
-	return err
-}
-func(ln *LocalNode)	SendReplicasSuccessorLeave_stub(args RPC_Leave, emp_reply *struct{}) error {
-	err:= ln.SendReplicasSuccessorLeave(args.pred_data,args.replica_number)
-	return err	
-}
-
 func (ln *LocalNode) FindSuccessor(key string, reply *string) error{
 	id_hash := GenHash(ln.config, key)
 	my_hash := ln.Id
@@ -235,149 +210,6 @@ func (ln *LocalNode) Notify(message string) (error) {
 
 func (ln *LocalNode) Ping() (error) {
 	return nil
-}
-
-// Remote Function Calls
-func (ln *LocalNode) remote_FindSuccessor (address string, key string, reply *string) error {
-	var complete_address = address+":6000"
-	t, err := rpc.DialHTTP("tcp", complete_address)
-    if err != nil {
-        log.Fatal("dialing error in remote_FindSuccessor:", err)
-        return err
-    }
-    err = t.Call("Node_RPC.FindSuccessor_Stub",key,reply)
-	if err != nil {
-    	log.Println("sync Call error in remote_FindSuccessor:", err) 
-    	return err
-	}
-	return nil
-
-}
-func (ln *LocalNode) remote_GetPredecessor (address string, reply *string) error {
-	var complete_address = address+":6000"
-	t, err := rpc.DialHTTP("tcp", complete_address)
-    if err != nil {
-        log.Fatal("dialing error in remote_GetPredecessor:", err)
-        return err
-    }
-    emp_Arg:=new(struct{})
-    err = t.Call("Node_RPC.GetPredecessor_Stub",emp_Arg,reply)
-	if err != nil {
-    	log.Println("sync Call error in remote_GetPredecessor:", err) 
-    	return err
-	}
-	return nil	
-}
-func (ln *LocalNode) remote_GetSuccessor (address string, reply *string) error {
-	var complete_address = address+":6000"
-	t, err := rpc.DialHTTP("tcp", complete_address)
-    if err != nil {
-        log.Fatal("dialing error in remote_GetSuccessor:", err)
-        return err
-    }
-    emp_Arg:=new(struct{})
-    err = t.Call("Node_RPC.GetSuccessor_Stub",emp_Arg,reply)
-	if err != nil {
-    	log.Println("sync Call error in remote_GetSuccessor:", err) 
-    	return err
-	}
-	return nil	
-}
-func (ln *LocalNode) remote_Notify (address string, message string) error {
-		var complete_address = address+":6000"
-	t, err := rpc.DialHTTP("tcp", complete_address)
-    if err != nil {
-        log.Fatal("dialing error in remote_Notify:", err)
-        return err
-    }
-    emp_reply:=new(struct{})
-    err = t.Call("Node_RPC.Notify_Stub",message,&emp_reply)
-	if err != nil {
-    	log.Println("sync Call error in remote_Notify:", err) 
-    	return err
-	}
-	return nil	
-}
-func (ln *LocalNode) remote_Ping (address string) error {
-	var complete_address = address+":6000"
-	t, err := rpc.DialHTTP("tcp", complete_address)
-    if err != nil {
-        log.Fatal("dialing error in remote_Ping:", err)
-        return err
-    }
-    emp_reply:=new(struct{})
-    emp_args:=new(struct{})
-    err = t.Call("Node_RPC.Ping_Stub",emp_args,&emp_reply)
-	if err != nil {
-    	log.Println("sync Call error in remote_Ping:", err) 
-    	return err
-	}
-	return nil	
-}
-func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, data_pred []map[string]string) error {
-	var complete_address = address+":6000"
-	t, err := rpc.DialHTTP("tcp", complete_address)
-    if err != nil {
-        log.Fatal("dialing error in remote_StabilizeReplicasJoin:", err)
-        return err
-    }
-    err = t.Call("Node_RPC.StabilizeReplicasJoin_stub",id,data_pred)
-	if err != nil {
-    	log.Println("sync Call error in remote_StabilizeReplicasJoin:", err) 
-    	return err
-	}
-	return nil			
-}
-
-func (ln *LocalNode) remote_SendReplicasSuccessorJoin(address string, id []byte,replica_number int) error {
-	var complete_address = address+":6000"
-	t, err := rpc.DialHTTP("tcp", complete_address)
-    if err != nil {
-        log.Fatal("dialing error in remote_SendReplicasSuccessorJoin:", err)
-        return err
-    }
-    emp_reply:=new(struct{})
-    var args RPC_Join
-    args.id=id
-    args.replica_number=replica_number
-    err = t.Call("Node_RPC.SendReplicasSuccessorJoin",args,emp_reply)
-	if err != nil {
-    	log.Println("sync Call error in remote_SendReplicasSuccessorJoin:", err) 
-    	return err
-	}
-	return nil	
-}
-func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data map[string]string,replica_number int) error{
-	var complete_address = address+":6000"
-	t, err := rpc.DialHTTP("tcp", complete_address)
-    if err != nil {
-        log.Fatal("dialing error in remote_SendReplicasSuccessorLeave:", err)
-        return err
-    }
-    emp_reply:=new(struct{})
-    var args RPC_Leave
-    args.pred_data=pred_data
-    args.replica_number=replica_number
-    err = t.Call("Node_RPC.SendReplicasSuccessorLeave_stub",args,emp_reply)
-	if err != nil {
-    	log.Println("sync Call error in remote_SendReplicasSuccessorLeave:", err) 
-    	return err
-	}
-	return nil	
-}
-
-func (ln *LocalNode) check_predecessor() {
-	if (ln.predecessor != nil) {
-		err := ln.remote_Ping(ln.predecessor.Address)
-		if (err!=nil) {
-			ln.predecessor = nil
-		}
-	}
-
-}
-
-func (ln *LocalNode) stabilize() {
-	
 }
 
 func (ln *LocalNode) SplitMap(data map[string]string, id []byte) map[string]string{			//deletes from data and inserts in to new_map and returns
@@ -485,6 +317,82 @@ func (ln *LocalNode) SendReplicasSuccessorLeave(pred_data map[string]string,repl
 	return e
 }
 
+func (ln *LocalNode) check_predecessor() {
+	if (ln.predecessor != nil) {
+		err := ln.remote_Ping(ln.predecessor.Address)
+		if (err!=nil) {
+			ln.predecessor = nil
+		}
+	}
+
+}
+
+func (ln *LocalNode) Stabilize() {
+	ln.timer = nil
+
+	defer ln.Schedule()
+
+	predAddress := ""
+	err := ln.remote_GetPredecessor(ln.successors[0].Address, &predAddress)
+
+	if (err!=nil) {
+		fmt.Println("Successor communication failed")
+		return
+	}
+
+	pred_hash := GenHash(ln.config, predAddress)
+	succ_hash := ln.successors[0].Id
+	my_hash := ln.Id
+
+	if (bytes.Compare(pred_hash, my_hash)>0 && bytes.Compare(pred_hash, succ_hash)<0) {
+		new_succ := new(Node)
+		new_succ.Address = predAddress
+		new_succ.Id = pred_hash
+		ln.successors[0] = new_succ
+
+		s_address := ""
+		e := ln.remote_GetSuccessor(ln.successors[0].Address, &s_address)
+		if (e!= nil) {
+			fmt.Println("New Successor communication failed")
+			return
+		}
+		succ := new(Node)
+		succ.Address = s_address
+		succ.Id = GenHash(ln.config,s_address)
+		ln.successors[1] = succ 
+
+		e = ln.remote_GetSuccessor(ln.successors[1].Address, &s_address)
+		if (e!= nil) {
+			fmt.Println("New Successor communication failed")
+			return
+		}
+		succ = new(Node)
+		succ.Address = s_address
+		succ.Id = GenHash(ln.config,s_address)
+		ln.successors[2] = succ 
+
+	}
+
+	err = ln.remote_Notify(ln.successors[0].Address, ln.Address)
+	if (err!=nil) {
+		fmt.Println("Successor communication failed")
+		return
+	}
+
+}
+
+func (ln *LocalNode) Schedule() {
+	// Setup our stabilize timer
+	ln.timer = time.AfterFunc(randStabilize(ln.config), ln.Stabilize)
+}
+
+func randStabilize(conf Config) time.Duration {
+	min := conf.StabilizeMin
+	max := conf.StabilizeMax
+	r := rand.Float64()
+	return time.Duration((r * float64(max-min)) + float64(min))
+}
+
 func (ln * LocalNode) ReadKey(key string, val *string) error{
 	var leader string
 	e := ln.FindSuccessor(key, leader *string)
@@ -496,5 +404,5 @@ func (ln * LocalNode) ReadKey(key string, val *string) error{
 }
 
 func (ln *LocalNode) ReadKeyLeader(key string,val *string){
-	
 }
+	
