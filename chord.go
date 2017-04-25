@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/rpc"
 	"time"
-	"errors"
 )
 
 type Config struct {
@@ -126,21 +125,28 @@ func (ln *LocalNode) Create() {
 	ln.predecessor = nil
 }
 
-func (ln *LocalNode) Join(address string) {
+func (ln *LocalNode) Join(address string) error{
 	// var n Node
 	// n.address
-	predecessor = nil
-	s_address, e := FindSuccessor_Stub(address, ln.Address)
-	var succ Node
+	ln.predecessor = nil
+	s_address := ""
+	e := ln.remote_FindSuccessor(address, ln.Address, &s_address)
+	if (e!= nil) {
+
+		return e;
+	}
+	succ := new(Node)
 	succ.Address = s_address
 	succ.Id = GenHash(ln.config,s_address)
-	successors[0] = succ 
-	e = remote_StabilizeReplicasJoin(s_address,ln.Id,data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
+	ln.successors[0] = succ 
+	e = ln.remote_StabilizeReplicasJoin(s_address,ln.Id,ln.data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
+	return e
 }
 
-func (ln *LocalNode) Leave(address string) {
+func (ln *LocalNode) Leave(address string) error{
 	// add relevant code 
-	e = StabilizeReplicasLeave()			//assuming successor exists
+	e := ln.StabilizeReplicasLeave()			//assuming successor exists
+	return e
 }
 
 func (ln *LocalNode) FindSuccessor_stub(key string, reply *string) error {
@@ -164,15 +170,15 @@ func (ln *LocalNode) Ping_stub(emp_arg struct{},emp_reply *struct{}) error {
 	return err
 }
 func(ln *LocalNode) StabilizeReplicasJoin_stub(id []byte, data_pred []map[string]string) error {
-	err:=StabilizeReplicasJoin(id,data_pred)
+	err:= ln.StabilizeReplicasJoin(id,data_pred)
 	return err
 } 
 func(ln *LocalNode)	SendReplicasSuccessorJoin_stub(args RPC_Join, emp_reply *struct{}) error {
-	err:=SendReplicasSuccessorJoin(args.id,args.replica_number)
+	err:= ln.SendReplicasSuccessorJoin(args.id,args.replica_number)
 	return err
 }
 func(ln *LocalNode)	SendReplicasSuccessorLeave_stub(args RPC_Leave, emp_reply *struct{}) error {
-	err:=SendReplicasSuccessorLeave(args.pred_data,args.replica_number)
+	err:= ln.SendReplicasSuccessorLeave(args.pred_data,args.replica_number)
 	return err	
 }
 
@@ -342,7 +348,7 @@ func (ln *LocalNode) remote_SendReplicasSuccessorJoin(address string, id []byte,
 	}
 	return nil	
 }
-func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data map[string]string,replica_number int){
+func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data map[string]string,replica_number int) error{
 	var complete_address = address+":6000"
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
@@ -378,7 +384,7 @@ func (ln *LocalNode) stabilize() {
 func (ln *LocalNode) SplitMap(data map[string]string, id []byte) map[string]string{			//deletes from data and inserts in to new_map and returns
 	var new_map map[string]string
 	for key,val := range data{
-		if(GenHash(ln.config,key).compare(id)<=0){
+		if(bytes.Compare(GenHash(ln.config,key),id)<=0){
 			new_map[key] = val
 			delete(data,key)
 		}
@@ -388,7 +394,7 @@ func (ln *LocalNode) SplitMap(data map[string]string, id []byte) map[string]stri
 
 func (ln *LocalNode) AddMap(target map[string]string, source map[string]string) error{
 	for key,val := range source{
-		_ , ok = target[key]
+		_ , ok := target[key]
 		if ok == true {
 			return errors.New("Key already in target map")
 		}else{
@@ -400,24 +406,23 @@ func (ln *LocalNode) AddMap(target map[string]string, source map[string]string) 
 
 func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred []map[string]string) error {
 
-	if len(data) != 3 {
+	if len(ln.data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
 	}
-	new_map = SplitMap(data[0],id)
+	new_map := ln.SplitMap(ln.data[0],id)
 
 	data_pred[0] = new_map
-	data_pred[1] = data[1]
-	data_pred[2] = data[2]
+	data_pred[1] = ln.data[1]
+	data_pred[2] = ln.data[2]
 
-	data[2] = data[1]
-	data[1] = new_map	
+	ln.data[2] = ln.data[1]
+	ln.data[1] = new_map	
 
-	e0 = remote_SendReplicasSuccessorJoin(successors[0].Address,id,1)			
-	e1 = remote_SendReplicasSuccessorJoin(successors[1].Address,id,2)	
-
+	e0 := ln.remote_SendReplicasSuccessorJoin(ln.successors[0].Address,id,1)	
 	if e0 != nil{
 		return e0
 	}		
+	e1 := ln.remote_SendReplicasSuccessorJoin(ln.successors[1].Address,id,2)			
 	if e1 != nil{
 		return e1
 	}
@@ -425,56 +430,58 @@ func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred []map[string]str
 }
 
 func (ln *LocalNode) SendReplicasSuccessorJoin(id []byte,replica_number int) error {
-	if len(data) != 3 {
+	if len(ln.data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
 	}
 	if replica_number == 1 {
-		new_map = SplitMap(data[1],id)
-		data[2] = new_map
-	} else if replica_number = 2 {
-		new_map = SplitMap(data[2],id)
+		new_map := ln.SplitMap(ln.data[1],id)
+		ln.data[2] = new_map
+	} else if replica_number == 2 {
+		ln.SplitMap(ln.data[2],id)
 	}
 	return nil
 }
 
 
 func (ln *LocalNode) StabilizeReplicasLeave() error {
-	e0 = remote_SendReplicasSuccessorLeave(successors[0].Address,data[2],0)
-	e1 = remote_SendReplicasSuccessorLeave(successors[1].Address,data[1],1)
-	e2 = remote_SendReplicasSuccessorLeave(successors[2].Address,data[0],2)
+	e0 := ln.remote_SendReplicasSuccessorLeave(ln.successors[0].Address,ln.data[2],0)
 	if e0 != nil{
 		return e0
 	}
+	e1 := ln.remote_SendReplicasSuccessorLeave(ln.successors[1].Address,ln.data[1],1)
 	if e1 != nil{
 		return e1
 	}
+	e2 := ln.remote_SendReplicasSuccessorLeave(ln.successors[2].Address,ln.data[0],2)
 	if e2 != nil{
 		return e2
 	}
 	return nil
 }
 
-func (ln *LocalNode) SendReplicasSuccessorLeave(pred_data map[string]string,replica_number int){
+func (ln *LocalNode) SendReplicasSuccessorLeave(pred_data map[string]string,replica_number int) error{
+	var e error
 	switch replica_number {
 		case 0 :
 		{
-			e = AddMap(data[0],data[1])
-			data[1] = data[2]
-			data[2] = pred_data
+			e = ln.AddMap(ln.data[0],ln.data[1])
+			ln.data[1] = ln.data[2]
+			ln.data[2] = pred_data
 		}
 		case 1 : 
 		{
-			e = AddMap(data[1],data[2])
-			data[2] = pred_data
+			e = ln.AddMap(ln.data[1],ln.data[2])
+			ln.data[2] = pred_data
 		}
 		case 2 : 
 		{
-			e = AddMap(data[2],pred_data)
+			e = ln.AddMap(ln.data[2],pred_data)
 		}
 		default :
 		{
 			//TODO
 		}
+	
+	}
 	return e
-}
 }
