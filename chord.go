@@ -5,6 +5,7 @@ import (
 	// "fmt"
 	"hash"
 	"time"
+	"errors"
 )
 
 type Config struct {
@@ -27,6 +28,7 @@ type LocalNode struct {
 	Node
 	successors  []*Node
 	finger      []*Node
+	data		[]map[string]string
 	// last_finger int
 	predecessor *Node
 	config Config
@@ -66,4 +68,26 @@ func (ln *LocalNode) genId() {
 
 	// Use the hash as the ID
 	ln.Id = hash.Sum(nil)
+}
+
+func (ln *LocalNode) split_map(data map[string]string, id []byte) map[string]string{
+	var new_map map[string]string
+	for key,val := range data{
+		if(GenHash(ln.config,key).compare(id)<=0){
+			new_map[key] = val
+			delete(data,key)
+		}
+	}
+	return new_map	
+}
+func (ln *LocalNode) add_map(target map[string]string, source map[string]string) error{
+	for key,val := range source{
+		_ , ok = target[key]
+		if ok == true {
+			return errors.New("Key already in target map")
+		}else{
+			target[key] = val
+		}
+	}
+	return nil
 }
