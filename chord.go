@@ -16,7 +16,12 @@ type Config struct {
 	// Delegate      Delegate         // Invoked to handle ring events
 	hashBits      int              // Bit size of the hash function
 }
-
+type Node_RPC interface{
+	FindSuccessor_stub(key string, reply *string) error
+	GetPredecessor_stub(emp_arg struct{}, reply *string) error
+	Notify_stub(message string, emp_reply *struct{}) error
+	Ping_stub(emp_arg struc{},emp_reply *struct{}) error
+}
 // Represents a node, local or remote
 type Node struct {
 	Id   []byte // Unique Chord Id
@@ -79,8 +84,29 @@ func (ln *LocalNode) Join(address string) {
 	// n.address
 }
 
-//RPC
-func (ln *LocalNode) FindSuccessor(key string) (string, error){
+
+func (ln *LocalNode) FindSuccessor_stub(key string, reply *string) error {
+	err := ln.FindSuccessor(key,reply)
+	return err
+}
+func (ln *LocalNode) GetPredecessor_stub(emp_arg struct{}, reply *string) error {
+	err := ln.GetPredecessor(reply)
+	return err
+}
+func (ln *LocalNode) GetSuccessor_stub(emp_arg struct{}, reply *string) error {
+	err := ln.GetSuccessor(reply)
+	return err
+}
+func (ln *LocalNode) Notify_stub(message string, emp_reply *struct{}) error {
+	err := ln.Notify(message)
+	return err
+}
+func (ln *LocalNode) Ping_stub(emp_arg struc{},emp_reply *struct{}) error {
+	err:=ln.Ping()
+	return err
+}
+
+func (ln *LocalNode) FindSuccessor(key string, reply *string) error{
 	id_hash := GenHash(ln.config, key)
 	my_hash := ln.Id
 	succ_hash := successors[0].Id
@@ -88,22 +114,43 @@ func (ln *LocalNode) FindSuccessor(key string) (string, error){
 		return (successors[0].address, nil)
 	}
 	s_address, e := FindSuccessor_Stub(successors[0].address, key)
-	return (s_address, e)
+	*reply = s_address
+	return e
 }
 
-//RPC
-func (ln *LocalNode) GetPredecessor() (string, error) {
-	return predecessor.Address
-}
-
-//RPC
-func (ln *LocalNode) Notify(address string) (error) {
+func (ln *LocalNode) GetPredecessor(reply *string) (error) {
+	*reply=predecessor.Address
 	return nil
 }
 
-//RPC
-func (ln *LocalNode) Ping(address string) (error) {
+func (ln *LocalNode) GetSuccessor(reply *string) (error) {
+	*reply=successors[0].Address
 	return nil
+}
+
+func (ln *LocalNode) Notify(message string) (error) {
+	return nil
+}
+
+func (ln *LocalNode) Ping() (error) {
+	return nil
+}
+
+// Remote Function Calls
+func (ln *LocalNode) remote_FindSuccessor (address string, key string, reply *string) error {
+
+}
+func (ln *LocalNode) remote_GetPredecessor (address string, reply *string) error {
+	
+}
+func (ln *LocalNode) remote_GetPredecessor (address string, reply *string) error {
+	
+}
+func (ln *LocalNode) remote_Notify (address string, message string) error {
+
+}
+func (ln *LocalNode) remote_Ping (address string) error {
+
 }
 
 func (ln *LocalNode) check_predecessor() {
