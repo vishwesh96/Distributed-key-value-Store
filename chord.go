@@ -454,18 +454,37 @@ func (ln *LocalNode) SendReplicasSuccessorJoin(id []byte,pred_id []byte, replica
 
 
 func (ln *LocalNode) StabilizeReplicasLeave() error {
-	e0 := ln.remote_SendReplicasSuccessorLeave(ln.successors[0].Address,ln.data[2],0)
-	if e0 != nil{
-		return e0
-	}
-	e1 := ln.remote_SendReplicasSuccessorLeave(ln.successors[1].Address,ln.data[1],1)
-	if e1 != nil{
-		return e1
-	}
-	e2 := ln.remote_SendReplicasSuccessorLeave(ln.successors[2].Address,ln.data[0],2)
-	if e2 != nil{
-		return e2
-	}
+	var e0 error
+	var e1 error
+	var e2 error
+	if(bytes.Compare(ln.Id,ln.successors[1].Id)==0){
+		e0 = ln.remote_SendReplicasSuccessorLeave(ln.successors[0].Address,ln.data[2],0)
+		if e0 != nil{
+			return e0
+		}		
+	}else if (bytes.Compare(ln.Id,ln.successors[2].Id)==0){
+		e0 = ln.remote_SendReplicasSuccessorLeave(ln.successors[0].Address,nil,0)
+		if e0 != nil{
+			return e0
+		}
+		e1 = ln.remote_SendReplicasSuccessorLeave(ln.successors[1].Address,nil,1)
+		if e1 != nil{
+			return e1
+		}
+	}else {
+		e0 = ln.remote_SendReplicasSuccessorLeave(ln.successors[0].Address,ln.data[2],0)
+		if e0 != nil{
+			return e0
+		}
+		e1 = ln.remote_SendReplicasSuccessorLeave(ln.successors[1].Address,ln.data[1],1)
+		if e1 != nil{
+			return e1
+		}
+		e2 = ln.remote_SendReplicasSuccessorLeave(ln.successors[2].Address,ln.data[0],2)
+		if e2 != nil{
+			return e2
+		}	
+	}	
 	return nil
 }
 
