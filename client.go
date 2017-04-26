@@ -6,8 +6,9 @@ import (
     "log"
 )
 
-func client_remoteRead(address string, key string, val *string) error {
-	ln.remote_ReadKey(address,key,4,val)
+func Client_remoteRead(address string, key string, val *string) error {
+	remote_ReadKey(address,key,4,val)
+	return nil
 }
 
 func (ln * LocalNode) ReadKey(key string, val *string) error{
@@ -16,6 +17,7 @@ func (ln * LocalNode) ReadKey(key string, val *string) error{
 	if e!=nil {
 		return e
 	}
+	log.Println("Found successor for key : "+key+" - " + *leader)
 	if (*leader==ln.Address) {
 		ln.ReadKeyLeader(key, val)
 		return nil
@@ -53,8 +55,9 @@ func (ln *LocalNode) ReadKeyReplica(key string, replica_num int, val *string) er
 }	
 
 
-func client_remoteWrite(address string, key string, val string) error {
-	ln.remote_WriteKey(address,key,val,4)
+func Client_remoteWrite(address string, key string, val string) error {
+	remote_WriteKey(address,key,val,4)
+	return nil
 }
 	
 func (ln *LocalNode) WriteKey(key string, val string) error{
@@ -63,6 +66,7 @@ func (ln *LocalNode) WriteKey(key string, val string) error{
 	if e!=nil {
 		return e
 	}
+	log.Println("Found successor for key : "+key+" - " + leader)
 	if (leader==ln.Address) {
 		ln.WriteKeyLeader(key, val)
 		return nil
@@ -101,8 +105,9 @@ func (ln * LocalNode) WriteKeySuccessor(key string, val string, replica_number i
 	return nil
 }
 
-func client_remoteDelete(address string, key string) error {
-	ln.remote_DeleteKey(address,key,4)
+func Client_remoteDelete(address string, key string) error {
+	remote_DeleteKey(address,key,4)
+	return nil
 }
 func (ln *LocalNode) DeleteKey(key string) error{
 	var leader string
@@ -110,6 +115,7 @@ func (ln *LocalNode) DeleteKey(key string) error{
 	if e!=nil {
 		return e
 	}
+	log.Println("Found successor for key : "+key+" - " + leader)
 	if (leader==ln.Address) {
 		ln.DeleteKeyLeader(key)
 		return nil
