@@ -81,11 +81,12 @@ func(ln *LocalNode) Heartbeat_Stub(rx_param hbeat, reply *hbeat) error {
 	return err
 }
 func(ln *LocalNode) ReadKey_Stub(args RPC_RDKey,val *string) error {
+
 	if args.Replica_number==0 {
 		err:=ln.ReadKeyLeader(args.Key,val)
 		return err
 	} else {
-		err:=ln.ReadKeyReplica(args.Key,args.Replica_number,val)
+		err:=ln.ReadKeyReplica(args.Key,args.Replica_number,val)		
 		return err
 	}
 }

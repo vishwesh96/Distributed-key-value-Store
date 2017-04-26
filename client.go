@@ -2,6 +2,8 @@ package kvstore
 
 import "errors"
 import "strconv"
+import "fmt"
+
 
 
 func (ln * LocalNode) ReadKey(key string, val *string) error{
@@ -22,6 +24,7 @@ func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 	} else {
 		to_read=ln.Prev_read+1
 	} 
+	// fmt.Println("read key : " + *val)
 
 	if to_read==0 {
 		*val=ln.data[0][key]
@@ -32,11 +35,13 @@ func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 			ln.remote_ReadKey((ln.successors[1]).Address,key,2,val)
 		}
 	} 
+
 	return nil
 }
 
 func (ln *LocalNode) ReadKeyReplica(key string, replica_num int, val *string) error{
 	*val=ln.data[replica_num][key]
+	fmt.Println("replice" + *val)
 	return nil
 }	
 
@@ -54,8 +59,11 @@ func (ln *LocalNode) WriteKey(key string, val string) error{
 }
 
 func (ln * LocalNode) WriteKeyLeader(key string, val string) error{
+
+	fmt.Println(len(ln.data))
 	ln.data[0][key] = val
 	//check successor exists
+
 	e0 := ln.remote_WriteKey(ln.successors[0].Address,key,val,1)
 	if e0!= nil {
 		return e0

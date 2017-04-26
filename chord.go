@@ -70,6 +70,9 @@ func (ln *LocalNode) Init(config Config) {
 	ln.successors = make([]*Node, ln.config.NumSuccessors)
 	ln.finger = make([]*Node, ln.config.hashBits)
 	ln.data = make([]map[string]string,ln.config.NumReplicas+1)
+	for i:=0;i<3;i++{
+		ln.data[i] = make(map[string]string)
+	}
  	// // Register with the RPC mechanism
 	done := make(chan string)
 	go ln.startHTTPserver(done,ln.Address)
