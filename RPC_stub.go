@@ -70,6 +70,10 @@ func (ln *LocalNode) Ping_Stub(emp_arg struct{},emp_reply *struct{}) error {
 	err:=ln.Ping()
 	return err
 }
+func (ln *LocalNode) SkipSuccessor_Stub(emp_arg struct{},emp_reply *struct{}) error {
+	err:=ln.SkipSuccessor()
+	return err
+}
 func(ln *LocalNode) StabilizeReplicasJoin_Stub(id []byte, ret_args *RPC_StabJoin) error {
 	err:= ln.StabilizeReplicasJoin(id,ret_args)
 	return err

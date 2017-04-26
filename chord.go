@@ -42,6 +42,7 @@ type LocalNode struct {
 	config Config
 	// stabilized  time.Time
 	timer       *time.Timer
+	shutdown 	bool
 	Prev_read int
 }
 
@@ -66,6 +67,7 @@ func (ln *LocalNode) Init(config Config) {
 	// Generate an Id
 	ln.config = config
 	ln.Id = GenHash(ln.config, ln.Address)
+	ln.shutdown = false
 	// Initialize all state
 	ln.successors = make([]*Node, ln.config.NumSuccessors)
 	ln.finger = make([]*Node, ln.config.hashBits)
@@ -119,7 +121,7 @@ func (ln *LocalNode) Create() {
 	ln.successors[2] = &ln.Node
 	ln.predecessor = nil
 
-	// ln.Schedule()
+	ln.Schedule()
 }
 
 func (ln *LocalNode) Join(address string) error{
@@ -174,10 +176,21 @@ func (ln *LocalNode) Join(address string) error{
 	return nil
 }
 
-func (ln *LocalNode) Leave(address string) error{
+func (ln *LocalNode) Leave() error{
 	// add relevant code 
 	e := ln.StabilizeReplicasLeave()			//assuming successor exists
-	return e
+	if (e!=nil) {
+		return e
+	}
+	if (ln.timer!=nil) {
+		ln.timer.Stop()	
+	}
+	ln.shutdown = true
+	if (ln.predecessor != nil) {
+		ln.remote_SkipSuccessor(ln.predecessor.Address)
+	}
+
+	return nil
 }
 func(ln *LocalNode) Heartbeat(rx_param Hbeat, reply *Hbeat ) error {
 	fmt.Println(rx_param.Node_info.Address, " Active at Time: ", rx_param.Rx_time)
@@ -248,6 +261,34 @@ func (ln *LocalNode) Notify(message string) (error) {
 }
 
 func (ln *LocalNode) Ping() (error) {
+	return nil
+}
+
+func (ln *LocalNode) SkipSuccessor() error{
+	ln.successors[0] = ln.successors[1]
+	if (ln.successors[0] != nil) {
+		fmt.Println("Successor 0 Updated: " + ln.successors[0].Address)	
+	} else {
+        return errors.New("Empty Successive Successor")
+    }
+	
+	ln.successors[1] = ln.successors[2]
+	if (ln.successors[1] != nil) {
+		fmt.Println("Successor 1 Updated: " + ln.successors[1].Address)
+	} else {
+        return errors.New("Empty Successive Successor")
+    }
+	
+	var s_address string
+	e := ln.remote_GetSuccessor(ln.successors[1].Address, &s_address)
+	if (e!= nil) {
+		return e;
+	}
+	succ := new(Node)
+	succ.Address = s_address
+	succ.Id = GenHash(ln.config,s_address)
+	ln.successors[2] = succ 
+	fmt.Println("Successor 2 Updated: " + ln.successors[2].Address)
 	return nil
 }
 
@@ -456,12 +497,20 @@ func (ln *LocalNode) Stabilize() {
 	}
 	defer ln.Schedule()
 
+	if (ln.successors[0]!=nil) {
+		if err := ln.updateSuccessors(); err != nil {
+			fmt.Printf("Stabilize error: %s", err)
+			return
+		}
+	}
+
 	if err := ln.checkNewSuccessor(); err != nil {
 		fmt.Printf("Stabilize error: %s", err)
 		return
 	}
 
-	if (ln.successors[0].Address == ln.Address) {
+	if (ln.successors[0]!=nil && ln.successors[0].Address == ln.Address) {
+		ln.check_predecessor()
 		if (ln.predecessor!=nil) {
 			ln.successors[0] = ln.predecessor
 			fmt.Println("Successor 0 Updated: " + ln.successors[0].Address)
@@ -492,7 +541,7 @@ func (ln *LocalNode) checkNewSuccessor() error {
 
 	predAddress := ""
 	err = ln.remote_GetPredecessor(successor, &predAddress)
-
+	// log.Println("Failed Predecessor")
 	if (err!=nil) {
 		return nil
 	}
@@ -549,7 +598,9 @@ func (ln *LocalNode) updateSuccessors() error {
 
 func (ln *LocalNode) Schedule() {
 	// Setup our stabilize timer
-	ln.timer = time.AfterFunc(randStabilize(ln.config), ln.Stabilize)
+	if !ln.shutdown {
+		ln.timer = time.AfterFunc(randStabilize(ln.config), ln.Stabilize)
+	}
 }
 
 func randStabilize(conf Config) time.Duration {
