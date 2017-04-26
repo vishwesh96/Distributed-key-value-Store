@@ -33,14 +33,14 @@ func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 	var to_read int
 	to_read=(ln.Prev_read+1)%3
 	// fmt.Println("read key : " + *val)
-
+	ln.Prev_read++
 	if to_read==0 || ln.successors[0]==nil || ln.successors[0].Address==ln.Address{
 		var ok bool
 		*val, ok = ln.data[0][key]
 		if ok == false{
 			return errors.New("Key not present in the store")
 		}
-		log.Println("Read key: "+ key + " value : " + *val)
+		log.Println("Read key: "+ key + " value : " + *val +" Node Address " + ln.Address)
 	} else {
 		if to_read==1 || ln.successors[1]==nil || ln.successors[1].Address==ln.Address {
 			err,Async_Call:=remote_ReadKey(ln.successors[0].Address,key,1,val)
@@ -65,7 +65,7 @@ func (ln *LocalNode) ReadKeyReplica(key string, replica_num int, val *string) er
 	if ok == false{
 		return errors.New("Key not present in the store")
 	}
-	log.Println("Read key: "+ key + " value : " + *val)
+	log.Println("Read key: "+ key + " value : " + *val+ " Node Address " + ln.Address)
 
 	return nil
 }	
@@ -96,7 +96,7 @@ func (ln * LocalNode) WriteKeyLeader(key string, val string) error{
 
 	fmt.Println(len(ln.data))
 	ln.data[0][key] = val
-	log.Println("Write key: "+ key + " value : " + val)
+	log.Println("Write key: "+ key + " value : " + val + " On Node Address " + ln.Address)
 	//check successor exists
 	if (ln.successors[0]!=nil && ln.successors[0].Address!=ln.Address) {
 		e0 := remote_WriteKey(ln.successors[0].Address,key,val,1)
@@ -119,7 +119,7 @@ func (ln * LocalNode) WriteKeySuccessor(key string, val string, replica_number i
 		return errors.New("Not enough replicas")
 	}
 	ln.data[replica_number][key] = val
-	log.Println("Write key: "+ key + " value : " + val)
+	log.Println("Write key: "+ key + " value : " + val + " On Node Address " + ln.Address)
 	return nil
 }
 

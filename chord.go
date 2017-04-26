@@ -204,7 +204,7 @@ func (ln *LocalNode) Leave() error{
 	return nil
 }
 func(ln *LocalNode) Heartbeat(rx_param Hbeat, reply *Hbeat ) error {
-	fmt.Println(rx_param.Node_info.Address, " Active at Time: ", rx_param.Rx_time)
+	//fmt.Println(rx_param.Node_info.Address, " Active at Time: ", rx_param.Rx_time)
 	(*reply).Node_info=ln.Node
 	(*reply).Rx_time=time.Now()
 	return nil
@@ -515,7 +515,7 @@ func (ln *LocalNode) check_predecessor() {
 func (ln *LocalNode) Stabilize() {
 	ln.timer = nil
 
-	fmt.Println("Stabilize called")
+	//fmt.Println("Stabilize called")
 	
 	ln.HeartBeatCheck()
 
