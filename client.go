@@ -8,8 +8,8 @@ import (
 )
 
 func Client_remoteRead(address string, key string, val *string) error {
-	remote_ReadKey(address,key,4,val)
-	return nil
+	e,_ := remote_ReadKey(address,key,4,val)
+	return e
 }
 
 func (ln * LocalNode) ReadKey(key string, val *string) error{
@@ -20,8 +20,8 @@ func (ln * LocalNode) ReadKey(key string, val *string) error{
 	}
 	log.Println("Found successor for key : "+key+" - " + *leader)
 	if (*leader==ln.Address) {
-		ln.ReadKeyLeader(key, val)
-		return nil
+		e := ln.ReadKeyLeader(key, val)
+		return e
 	}
 	err,Async_Call:=remote_ReadKey(*leader,key,0,val)
 	<-Async_Call.Done
@@ -31,15 +31,15 @@ func (ln * LocalNode) ReadKey(key string, val *string) error{
 func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 	//Trivial Load Balancing
 	var to_read int
-	if ln.Prev_read==2 {
-		to_read=0
-	} else {
-		to_read=ln.Prev_read+1
-	} 
+	to_read=(ln.Prev_read+1)%3
 	// fmt.Println("read key : " + *val)
 
 	if to_read==0 || ln.successors[0]==nil || ln.successors[0].Address==ln.Address{
-		*val=ln.data[0][key]
+		var ok bool
+		*val, ok = ln.data[0][key]
+		if ok == false{
+			return errors.New("Key not present in the store")
+		}
 		log.Println("Read key: "+ key + " value : " + *val)
 	} else {
 		if to_read==1 || ln.successors[1]==nil || ln.successors[1].Address==ln.Address {
@@ -57,15 +57,19 @@ func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 }
 
 func (ln *LocalNode) ReadKeyReplica(key string, replica_num int, val *string) error{
-	*val=ln.data[replica_num][key]
+	var ok bool
+	*val, ok = ln.data[replica_num][key]
+	if ok == false{
+		return errors.New("Key not present in the store")
+	}
 	log.Println("Read key: "+ key + " value : " + *val)
 	return nil
 }	
 
 
 func Client_remoteWrite(address string, key string, val string) error {
-	remote_WriteKey(address,key,val,4)
-	return nil
+	e := remote_WriteKey(address,key,val,4)
+	return e
 }
 	
 func (ln *LocalNode) WriteKey(key string, val string) error{
@@ -76,11 +80,10 @@ func (ln *LocalNode) WriteKey(key string, val string) error{
 	}
 	log.Println("Found successor for key : "+key+" - " + leader)
 	if (leader==ln.Address) {
-		ln.WriteKeyLeader(key, val)
-		return nil
+		e = ln.WriteKeyLeader(key, val)
+		return e
 	}
 	e = remote_WriteKey(leader,key,val,0)
-
 	return e
 }
 

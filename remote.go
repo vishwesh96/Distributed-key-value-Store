@@ -168,10 +168,10 @@ func remote_ReadKey(address string,key string,replica_number int,val *string) (e
     args.Replica_number=replica_number
     var Async_Call *rpc.Call
     if(replica_number!=4){
-        Async_Call = t.Go("Node_RPC.ReadKey_stub",args,val,nil)
+        Async_Call = t.Go("Node_RPC.ReadKey_Stub",args,val,nil)
         err=Async_Call.Error
     } else {
-        err = t.Call("Node_RPC.ReadKey_stub",args,val)     
+        err = t.Call("Node_RPC.ReadKey_Stub",args,val)     
         Async_Call = nil
     }
     if err != nil {

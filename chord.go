@@ -119,7 +119,7 @@ func (ln *LocalNode) Create() {
 	ln.successors[2] = &ln.Node
 	ln.predecessor = nil
 
-	ln.Schedule()
+	// ln.Schedule()
 }
 
 func (ln *LocalNode) Join(address string) error{
