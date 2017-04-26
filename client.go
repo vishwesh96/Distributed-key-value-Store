@@ -20,7 +20,8 @@ func (ln * LocalNode) ReadKey(key string, val *string) error{
 		ln.ReadKeyLeader(key, val)
 		return nil
 	}
-	remote_ReadKey(*leader,key,0,val)
+	err,Async_Call:=remote_ReadKey(*leader,key,0,val)
+	reply := Async_Call.Done
 	return nil
 }
 
@@ -38,9 +39,12 @@ func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 		log.Println("Read key: "+ key + " value : " + *val)
 	} else {
 		if to_read==1 || ln.successors[1]==nil || ln.successors[1].Address==ln.Address {
-			remote_ReadKey((ln.successors[0]).Address,key,1,val)
+			err,Async_Call:=remote_ReadKey(ln.successors[0].Address,key,1,val)
+			reply := Async_Call.Done
+	
 		} else {
-			remote_ReadKey((ln.successors[1]).Address,key,2,val)
+			err,Async_Call:=remote_ReadKey(ln.successors[1].Address,key,2,val)
+			reply := Async_Call.Done
 		}
 	} 
 	return nil
@@ -103,6 +107,7 @@ func (ln * LocalNode) WriteKeySuccessor(key string, val string, replica_number i
 
 func client_remoteDelete(address string, key string) error {
 	ln.remote_DeleteKey(address,key,4)
+	
 }
 func (ln *LocalNode) DeleteKey(key string) error{
 	var leader string
