@@ -6,6 +6,7 @@ import (
 )
 type RPC_Join struct {
 	Id []byte
+	Pred_id []byte
 	Replica_number int
 }
 type RPC_Leave struct {
@@ -14,7 +15,7 @@ type RPC_Leave struct {
 }
 
 type RPC_StabJoin struct {
-	Data_pred [3]map[string]string
+	Data_pred  [3]map[string]string
 }
 type RPC_RDKey struct {
 	Key string
@@ -69,7 +70,7 @@ func(ln *LocalNode) StabilizeReplicasJoin_Stub(id []byte, ret_args *RPC_StabJoin
 	return err
 } 
 func(ln *LocalNode)	SendReplicasSuccessorJoin_Stub(args RPC_Join, emp_reply *struct{}) error {
-	err:= ln.SendReplicasSuccessorJoin(args.Id,args.Replica_number)
+	err:= ln.SendReplicasSuccessorJoin(args.Id,args.Pred_id,args.Replica_number)
 	return err
 }
 func(ln *LocalNode)	SendReplicasSuccessorLeave_Stub(args RPC_Leave, emp_reply *struct{}) error {

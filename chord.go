@@ -12,6 +12,7 @@ import (
 	"net/rpc"
 	"time"
 	"math/rand"
+	"strconv"
 )
 
 type Config struct {
@@ -119,7 +120,7 @@ func (ln *LocalNode) Create() {
 	ln.successors[2] = &ln.Node
 	ln.predecessor = nil
 
-	// ln.Schedule()
+	ln.Schedule()
 }
 
 func (ln *LocalNode) Join(address string) error{
@@ -162,13 +163,12 @@ func (ln *LocalNode) Join(address string) error{
 	fmt.Println("Successor 2 Updated: " + ln.successors[2].Address)
 	fmt.Println(len(ln.data))
 	var ret_args RPC_StabJoin 
-	var i int
-	for i=0;i<3;i++ {
-		ret_args.Data_pred[i]=ln.data[i]
-	}
-	e = ln.remote_StabilizeReplicasJoin(s_address,ln.Id,&ret_args)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
+	e = ln.remote_StabilizeReplicasJoin(ln.successors[0].Address,ln.Id,&ret_args)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
 	if (e!= nil) {
 		return e;
+	}
+	for i:=0;i<3;i++{
+		CopyMap(ln.data[i],ret_args.Data_pred[i])
 	}
 	ln.Stabilize()
 	return nil
@@ -246,12 +246,21 @@ func (ln *LocalNode) Ping() (error) {
 	return nil
 }
 
-func (ln *LocalNode) SplitMap(data map[string]string, id []byte) map[string]string{			//deletes from data and inserts in to new_map and returns
-	var new_map map[string]string
+func (ln *LocalNode) SplitMap(data map[string]string, id []byte, pred_id []byte) map[string]string{			//deletes from data and inserts in to new_map and returns
+	new_map := make(map[string]string)
 	for key,val := range data{
-		if(bytes.Compare(GenHash(ln.config,key),id)<=0){
-			new_map[key] = val
-			delete(data,key)
+		if bytes.Compare(ln.Id,ln.successors[0].Id) == 0{
+			if(betweenRightIncl(ln.Id,id,GenHash(ln.config,key))){
+			// if(bytes.Compare(,id)<=0 && bytes.Compare(GenHash(ln.config,key),ln.Id) > 0){
+				new_map[key] = val
+				delete(data,key)
+			}	
+		} else{
+			if(betweenRightIncl(pred_id,id,GenHash(ln.config,key))){
+			// if(bytes.Compare(GenHash(ln.config,key),id)<=0 && bytes.Compare(GenHash(ln.config,key),pred_id) > 0){
+				new_map[key] = val
+				delete(data,key)
+			}
 		}
 	}
 	return new_map	
@@ -271,40 +280,98 @@ func (ln *LocalNode) AddMap(target map[string]string, source map[string]string) 
 
 func (ln *LocalNode) StabilizeReplicasJoin(id []byte, ret_args *RPC_StabJoin) error {
 
+	var e0 error
+	var e1 error
+	var new_map map[string]string
+
 	if len(ln.data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
 	}
-	
-	new_map := ln.SplitMap(ln.data[0],id)
-	((*ret_args).Data_pred)[0] = new_map
-	((*ret_args).Data_pred)[1] = ln.data[1]
-	((*ret_args).Data_pred)[2] = ln.data[2]
-
-	ln.data[2] = ln.data[1]
-	ln.data[1] = new_map	
-
-
- 	e0 := ln.remote_SendReplicasSuccessorJoin(ln.successors[0].Address,id,1)	
-	if e0 != nil{
-		return e0
-	}		
-	e1 := ln.remote_SendReplicasSuccessorJoin(ln.successors[1].Address,id,2)			
-	if e1 != nil{
-		return e1
+	if ln.predecessor != nil{
+		new_map = ln.SplitMap(ln.data[0],id,ln.predecessor.Id)
+		// fmt.Println("NEW MAP")
+		PrintMap(new_map)
+	}else{
+		new_map = ln.SplitMap(ln.data[0],id,nil)
 	}
+
+	for i:=0;i<3;i++{
+		(*ret_args).Data_pred[i] = make(map[string]string)		
+	}
+
+	if (bytes.Compare(ln.Id,ln.successors[0].Id) == 0){				//If only one node
+		CopyMap(((*ret_args).Data_pred[0]),new_map)
+		CopyMap(((*ret_args).Data_pred[1]),ln.data[0])	
+		CopyMap(ln.data[1],new_map)	
+
+	}else if (bytes.Compare(ln.Id,ln.successors[1].Id) == 0){
+		CopyMap(((*ret_args).Data_pred[0]),new_map)
+		CopyMap(((*ret_args).Data_pred[1]),ln.data[1])
+		CopyMap(((*ret_args).Data_pred[2]),ln.data[0])
+
+		CopyMap(ln.data[2],ln.data[1])
+		CopyMap(ln.data[1],new_map)	
+
+		if ln.predecessor != nil{
+	 		e0 = ln.remote_SendReplicasSuccessorJoin(ln.successors[0].Address,id,ln.predecessor.Id,1)	
+		}else{
+	 		e0 = ln.remote_SendReplicasSuccessorJoin(ln.successors[0].Address,id,nil,1)			
+		}
+		if e0 != nil{
+			return e0
+		}		
+		if ln.predecessor != nil{
+			e1 = ln.remote_SendReplicasSuccessorJoin(ln.successors[1].Address,id,ln.predecessor.Id,2)			
+		}else{
+			e1 = ln.remote_SendReplicasSuccessorJoin(ln.successors[1].Address,id,nil,2)
+		}
+
+		if e1 != nil{
+			return e1
+		}
+	}else{
+		CopyMap(((*ret_args).Data_pred[0]),new_map)
+		CopyMap(((*ret_args).Data_pred[1]),ln.data[1])
+		CopyMap(((*ret_args).Data_pred[2]),ln.data[2])
+
+		CopyMap(ln.data[2],ln.data[1])
+		CopyMap(ln.data[1],new_map)	
+
+		if ln.predecessor != nil{
+	 		e0 = ln.remote_SendReplicasSuccessorJoin(ln.successors[0].Address,id,ln.predecessor.Id,1)	
+		}else{
+	 		e0 = ln.remote_SendReplicasSuccessorJoin(ln.successors[0].Address,id,nil,1)			
+		}
+		if e0 != nil{
+			return e0
+		}		
+		if ln.predecessor != nil{
+			e1 = ln.remote_SendReplicasSuccessorJoin(ln.successors[1].Address,id,ln.predecessor.Id,2)			
+		}else{
+			e1 = ln.remote_SendReplicasSuccessorJoin(ln.successors[1].Address,id,nil,2)
+		}
+
+		if e1 != nil{
+			return e1
+		}
+	}
+	// log.Println("StabilizeReplicasJoin")
+	// ln.PrintAllMaps()
+
 	return nil
 }
 
-func (ln *LocalNode) SendReplicasSuccessorJoin(id []byte,replica_number int) error {
+func (ln *LocalNode) SendReplicasSuccessorJoin(id []byte,pred_id []byte, replica_number int) error {
 	if len(ln.data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
 	}
 	if replica_number == 1 {
-		new_map := ln.SplitMap(ln.data[1],id)
-		ln.data[2] = new_map
+		new_map := ln.SplitMap(ln.data[1],id,pred_id)
+		CopyMap(ln.data[2],new_map)
 	} else if replica_number == 2 {
-		ln.SplitMap(ln.data[2],id)
+		ln.SplitMap(ln.data[2],id,pred_id)
 	}
+
 	return nil
 }
 
@@ -331,13 +398,13 @@ func (ln *LocalNode) SendReplicasSuccessorLeave(pred_data map[string]string,repl
 		case 0 :
 		{
 			e = ln.AddMap(ln.data[0],ln.data[1])
-			ln.data[1] = ln.data[2]
-			ln.data[2] = pred_data
+			CopyMap(ln.data[1],ln.data[2])
+			CopyMap(ln.data[2],pred_data)
 		}
 		case 1 : 
 		{
 			e = ln.AddMap(ln.data[1],ln.data[2])
-			ln.data[2] = pred_data
+			CopyMap(ln.data[2],pred_data)
 		}
 		case 2 : 
 		{
@@ -498,3 +565,41 @@ func betweenRightIncl(id1, id2, key []byte) bool {
 }
 
 	
+func PrintMap(data map[string]string){
+	for key,val := range data{
+		log.Println("\tkey : " + key  + " value : " + val)
+	}
+}
+
+func (ln *LocalNode) PrintAllMaps(){
+	for i:=0;i<3;i++{
+		log.Println("Map number : " + strconv.Itoa(i))
+		PrintMap(ln.data[i])
+	}	
+}
+
+func CopyMap(target map[string]string, source map[string]string){
+
+	for k := range target {
+    	delete(target, k)
+	}
+	for k,v :=  range source{
+		target[k] = v
+	}
+}
+
+// func (ln *LocalNode) PrintSuccessorMaps(){
+// 	if ln.successors[0].Address != ln.Address{
+// 		fmt.Println("First Successor")
+// 		ln.successors[0].PrintAllMaps()
+// 	}
+// 	if ln.successors[1].Address != ln.Address{
+// 		fmt.Println("Second Successor")
+// 		ln.successors[1].PrintAllMaps()
+// 	} 
+// 	if ln.successors[2].Address != ln.Address{
+// 		fmt.Println("Third Successor")
+// 		ln.successors[2].PrintAllMaps()
+// 	} 
+	
+// }
