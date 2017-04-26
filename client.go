@@ -19,9 +19,9 @@ func (ln * LocalNode) ReadKey(key string, val *string) error{
 		return e
 	}
 	log.SetOutput(os.Stderr)
-	log.Println("Found successor for key : "+key+" - " + *leader)
+	log.Println("Found leader for key : "+key+" - " + *leader)
 	log.SetOutput(ln.logfile)				
-	log.Println("Found successor for key : "+key+" - " + *leader)
+	log.Println("Found leader for key : "+key+" - " + *leader)
 	if (*leader==ln.Address) {
 		e := ln.ReadKeyLeader(key, val)
 		return e
@@ -36,7 +36,11 @@ func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 	var to_read int
 	to_read=(ln.Prev_read+1)%3
 	ln.Prev_read = ln.Prev_read+1
-	ln.PrintAllMaps()
+	// ln.PrintAllMaps()
+	log.SetOutput(os.Stderr)
+	log.Println("Read Request for : "+ key + " at Node Address " + ln.Address)
+	log.SetOutput(ln.logfile)				
+	log.Println("Read Request for : "+ key + " at Node Address " + ln.Address)
 
 	ln.Prev_read++
 	if to_read==0 || ln.successors[0]==nil || ln.successors[0].Address==ln.Address{
@@ -93,9 +97,9 @@ func (ln *LocalNode) WriteKey(key string, val string) error{
 		return e
 	}
 	log.SetOutput(os.Stderr)
-	log.Println("Found successor for key : "+key+" - " + leader)
+	log.Println("Found leader for key : "+key+" - " + leader)
 	log.SetOutput(ln.logfile)				
-	log.Println("Found successor for key : "+key+" - " + leader)
+	log.Println("Found leader for key : "+key+" - " + leader)
 	if (leader==ln.Address) {
 		e = ln.WriteKeyLeader(key, val)
 		return e

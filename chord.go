@@ -412,7 +412,7 @@ func (ln *LocalNode) StabilizeReplicasJoin(id []byte, ret_args *RPC_StabJoin) er
 	if ln.predecessor != nil{
 		new_map = ln.SplitMap(ln.data[0],id,ln.predecessor.Id)
 		// log.Println("NEW MAP")
-		PrintMap(new_map)
+		// PrintMap(new_map)
 	}else{
 		new_map = ln.SplitMap(ln.data[0],id,nil)
 	}
@@ -582,7 +582,7 @@ func (ln *LocalNode) check_predecessor() {
 func (ln *LocalNode) Stabilize() {
 	ln.timer = nil
 
-	//log.Println("Stabilize called")
+	// fmt.Println("Stabilize called")
 	
 	ln.HeartBeatCheck()
 
@@ -685,9 +685,9 @@ func (ln *LocalNode) HeartBeatCheck() {
 				// ln.mux.Lock()
 				if (e!= nil) {
 					log.SetOutput(os.Stderr)
-					log.Fatal("Cant get successor in Stabilize, Aboting...")
+					log.Fatal("Cant get successor in Stabilize, Aborting...")
 					log.SetOutput(ln.logfile)	
-					log.Fatal("Cant get successor in Stabilize, Aboting...")
+					log.Fatal("Cant get successor in Stabilize, Aborting...")
 				}
 				succ := new(Node)
 				succ.Address = s_address
@@ -875,7 +875,7 @@ func (ln *LocalNode) updateSuccessors() error {
 	succ.Id = GenHash(ln.config,s_address)
 	if (ln.successors[1].Address!=s_address) {
 		log.SetOutput(os.Stderr)
-		log.Println("Successor 1 Updated: " + ln.successors[1].Address)
+		log.Println("Successor 1 Updated: " + s_address)
 		log.SetOutput(ln.logfile)			
 		
 		log.Println("Successor 1 Updated: " + s_address	)
@@ -895,7 +895,7 @@ func (ln *LocalNode) updateSuccessors() error {
 	succ.Id = GenHash(ln.config,s_address)
 	if (ln.successors[2].Address!=s_address) {
 		log.SetOutput(os.Stderr)
-		log.Println("Successor 2 Updated: " + ln.successors[2].Address)
+		log.Println("Successor 2 Updated: " + s_address)
 		log.SetOutput(ln.logfile)			
 		log.Println("Successor 2 Updated: " + s_address)		
 	}
