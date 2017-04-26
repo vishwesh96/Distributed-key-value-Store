@@ -157,9 +157,18 @@ func (ln *LocalNode) Join(address string) error{
 	succ.Id = GenHash(ln.config,s_address)
 	ln.successors[2] = succ 
 	fmt.Println("Successor 2 Updated: " + ln.successors[2].Address)
-
-	e = ln.remote_StabilizeReplicasJoin(s_address,ln.Id,&ln.data)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
-	return e
+	fmt.Println(len(ln.data))
+	var ret_args RPC_StabJoin 
+	var i int
+	for i=0;i<3;i++ {
+		ret_args.Data_pred[i]=ln.data[i]
+	}
+	e = ln.remote_StabilizeReplicasJoin(s_address,ln.Id,&ret_args)			//call StabilizeReplicasJoin and set ln.Address as predecessor of s_address
+	if (e!= nil) {
+		return e;
+	}
+	ln.Stabilize()
+	return nil
 }
 
 func (ln *LocalNode) Leave(address string) error{
@@ -181,7 +190,7 @@ func (ln *LocalNode) FindSuccessor(key string, reply *string) error{
 		*reply = ln.Address
 		return nil
 	}
-	if (bytes.Compare(id_hash,my_hash)>0 && bytes.Compare(id_hash,succ_hash)<=0) {
+	if (betweenRightIncl(my_hash, succ_hash, id_hash)) {
 		*reply = ln.successors[0].Address
 		return nil
 	}
@@ -218,7 +227,7 @@ func (ln *LocalNode) Notify(message string) (error) {
 		pred_hash := GenHash(ln.config, ln.predecessor.Address)
 		new_hash := GenHash(ln.config, message)
 		my_hash := ln.Id
-		if (bytes.Compare(new_hash, pred_hash) > 0 && bytes.Compare(new_hash, my_hash) < 0) {
+		if (between(pred_hash, my_hash, new_hash)) {
 			flag = true
 		}
 	}
@@ -257,17 +266,16 @@ func (ln *LocalNode) AddMap(target map[string]string, source map[string]string) 
 	return nil
 }
 
-func (ln *LocalNode) StabilizeReplicasJoin(id []byte, data_pred *[]map[string]string) error {
+func (ln *LocalNode) StabilizeReplicasJoin(id []byte, ret_args *RPC_StabJoin) error {
 
 	if len(ln.data) != 3 {
 		return errors.New("Doesn't have 3 replicas")
 	}
 	
 	new_map := ln.SplitMap(ln.data[0],id)
-
-	(*data_pred)[0] = new_map
-	(*data_pred)[1] = ln.data[1]
-	(*data_pred)[2] = ln.data[2]
+	((*ret_args).Data_pred)[0] = new_map
+	((*ret_args).Data_pred)[1] = ln.data[1]
+	((*ret_args).Data_pred)[2] = ln.data[2]
 
 	ln.data[2] = ln.data[1]
 	ln.data[1] = new_map	
@@ -365,6 +373,15 @@ func (ln *LocalNode) Stabilize() {
 	}
 
 	if (ln.successors[0].Address == ln.Address) {
+		if (ln.predecessor!=nil) {
+			ln.successors[0] = ln.predecessor
+			fmt.Println("Successor 0 Updated: " + ln.successors[0].Address)
+		}
+		return
+	}
+
+	if err := ln.updateSuccessors(); err != nil {
+		fmt.Printf("Stabilize error: %s", err)
 		return
 	}
 	
@@ -399,34 +416,44 @@ func (ln *LocalNode) checkNewSuccessor() error {
 	ln.successors[0].Id = succ_hash
 
 
-	if (bytes.Compare(pred_hash, my_hash)>0 && bytes.Compare(pred_hash, succ_hash)<0) {
+	if (between(my_hash, succ_hash, pred_hash)) {
 		new_succ := new(Node)
 		new_succ.Address = predAddress
 		new_succ.Id = pred_hash
 		ln.successors[0] = new_succ
 		fmt.Println("Successor 0 Updated: " + ln.successors[0].Address)
-		s_address := ""
-		e := ln.remote_GetSuccessor(ln.successors[0].Address, &s_address)
-		if (e!= nil) {
-			return e
-		}
-		succ := new(Node)
-		succ.Address = s_address
-		succ.Id = GenHash(ln.config,s_address)
-		ln.successors[1] = succ 
-		fmt.Println("Successor 1 Updated: " + ln.successors[1].Address)
-
-		e = ln.remote_GetSuccessor(ln.successors[1].Address, &s_address)
-		if (e!= nil) {
-			return e
-		}
-		succ = new(Node)
-		succ.Address = s_address
-		succ.Id = GenHash(ln.config,s_address)
-		ln.successors[2] = succ 
-		fmt.Println("Successor 2 Updated: " + ln.successors[2].Address)
+		
 
 	}
+
+	return nil
+}
+
+func (ln *LocalNode) updateSuccessors() error {
+	s_address := ""
+	e := ln.remote_GetSuccessor(ln.successors[0].Address, &s_address)
+	if (e!= nil) {
+		return e
+	}
+	succ := new(Node)
+	succ.Address = s_address
+	succ.Id = GenHash(ln.config,s_address)
+	if (ln.successors[1].Address!=s_address) {
+		fmt.Println("Successor 1 Updated: " + s_address	)
+	}
+	ln.successors[1] = succ 
+
+	e = ln.remote_GetSuccessor(ln.successors[1].Address, &s_address)
+	if (e!= nil) {
+		return e
+	}
+	succ = new(Node)
+	succ.Address = s_address
+	succ.Id = GenHash(ln.config,s_address)
+	if (ln.successors[2].Address!=s_address) {
+		fmt.Println("Successor 2 Updated: " + s_address)		
+	}
+	ln.successors[2] = succ 
 
 	return nil
 }
@@ -442,3 +469,29 @@ func randStabilize(conf Config) time.Duration {
 	r := rand.Float64()
 	return time.Duration((r * float64(max-min)) + float64(min))
 }
+
+func between(id1, id2, key []byte) bool {
+	// Check for ring wrap around
+	if bytes.Compare(id1, id2) == 1 {
+		return bytes.Compare(id1, key) == -1 ||
+			bytes.Compare(id2, key) == 1
+	}
+
+	// Handle the normal case
+	return bytes.Compare(id1, key) == -1 &&
+		bytes.Compare(id2, key) == 1
+}
+
+// Checks if a key is between two ID's, right inclusive
+func betweenRightIncl(id1, id2, key []byte) bool {
+	// Check for ring wrap around
+	if bytes.Compare(id1, id2) == 1 {
+		return bytes.Compare(id1, key) == -1 ||
+			bytes.Compare(id2, key) >= 0
+	}
+
+	return bytes.Compare(id1, key) == -1 &&
+		bytes.Compare(id2, key) >= 0
+}
+
+	

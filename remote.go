@@ -84,14 +84,14 @@ func (ln *LocalNode) remote_Ping (address string) error {
 	}
 	return nil	
 }
-func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, data_pred *[]map[string]string) error {
+func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, ret_args *RPC_StabJoin) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
         log.Fatal("dialing error in remote_StabilizeReplicasJoin:", err)
         return err
     }
-    err = t.Call("Node_RPC.StabilizeReplicasJoin_Stub",id,data_pred)
+    err = t.Call("Node_RPC.StabilizeReplicasJoin_Stub",id,ret_args)
 	if err != nil {
     	log.Println("sync Call error in remote_StabilizeReplicasJoin:", err) 
     	return err
@@ -155,7 +155,7 @@ func(ln *LocalNode) remote_Heartbeat(address string, rx_param hbeat, reply *hbea
 	return nil	
 }
 
-func(ln *LocalNode) remote_ReadKey(address string,key string,replica_number int,val *string) error {
+func remote_ReadKey(address string,key string,replica_number int,val *string) error {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
@@ -174,7 +174,7 @@ func(ln *LocalNode) remote_ReadKey(address string,key string,replica_number int,
     return nil     
 }
 
-func(ln *LocalNode) remote_WriteKey(address string,key string,val string,replica_number int) error {
+func remote_WriteKey(address string,key string,val string,replica_number int) error {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
@@ -194,7 +194,7 @@ func(ln *LocalNode) remote_WriteKey(address string,key string,val string,replica
     return nil     
 }
 
-func(ln *LocalNode) remote_DeleteKey(address string,key string,replica_number int) error {
+func remote_DeleteKey(address string,key string,replica_number int) error {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {

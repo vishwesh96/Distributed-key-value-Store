@@ -2,7 +2,7 @@ package kvstore
 
 import (
 	"time"
-	"fmt"
+	// "fmt"
 )
 type RPC_Join struct {
 	Id []byte
@@ -11,6 +11,10 @@ type RPC_Join struct {
 type RPC_Leave struct {
 	Pred_data map[string]string
 	Replica_number int
+}
+
+type RPC_StabJoin struct {
+	Data_pred [3]map[string]string
 }
 type RPC_RDKey struct {
 	Key string
@@ -21,6 +25,7 @@ type RPC_WriteKey struct {
 	Val string
 	Replica_number int
 }
+
 type hbeat struct{ 
 	Rx_time time.Time
 	Node_info Node
@@ -30,7 +35,7 @@ type Node_RPC interface{
 	GetPredecessor_Stub(emp_arg struct{}, reply *string) error
 	Notify_Stub(message string, emp_reply *struct{}) error
 	Ping_Stub(emp_arg struct{},emp_reply *struct{}) error
-	StabilizeReplicasJoin_Stub(id []byte, data_pred *[]map[string]string) error 
+	StabilizeReplicasJoin_Stub(id []byte,ret_args *RPC_StabJoin) error 
 	SendReplicasSuccessorJoin_Stub(args RPC_Join, emp_reply *struct{}) error 
 	SendReplicasSuccessorLeave_Stub(args RPC_Leave, emp_reply *struct{}) error
 	Heartbeat_Stub(rx_param hbeat, reply *hbeat) error
@@ -40,7 +45,6 @@ type Node_RPC interface{
 }
 
 func (ln *LocalNode) FindSuccessor_Stub(key string, reply *string) error {
-	fmt.Println("lol")
 	err := ln.FindSuccessor(key,reply)
 	return err
 }
@@ -60,8 +64,8 @@ func (ln *LocalNode) Ping_Stub(emp_arg struct{},emp_reply *struct{}) error {
 	err:=ln.Ping()
 	return err
 }
-func(ln *LocalNode) StabilizeReplicasJoin_Stub(id []byte, data_pred *[]map[string]string) error {
-	err:= ln.StabilizeReplicasJoin(id,data_pred)
+func(ln *LocalNode) StabilizeReplicasJoin_Stub(id []byte, ret_args *RPC_StabJoin) error {
+	err:= ln.StabilizeReplicasJoin(id,ret_args)
 	return err
 } 
 func(ln *LocalNode)	SendReplicasSuccessorJoin_Stub(args RPC_Join, emp_reply *struct{}) error {
