@@ -119,7 +119,7 @@ func (ln *LocalNode) Create() {
 	ln.successors[2] = &ln.Node
 	ln.predecessor = nil
 
-	// ln.Schedule()
+	ln.Schedule()
 }
 
 func (ln *LocalNode) Join(address string) error{
@@ -177,7 +177,15 @@ func (ln *LocalNode) Join(address string) error{
 func (ln *LocalNode) Leave(address string) error{
 	// add relevant code 
 	e := ln.StabilizeReplicasLeave()			//assuming successor exists
-	return e
+	if (e!=nil) {
+		return e
+	}
+	ln.timer.Stop()
+	if (ln.predecessor != nil) {
+		ln.remote_SkipSuccessor(ln.predecessor.Address)
+	}
+
+	return nil
 }
 func(ln *LocalNode) Heartbeat(rx_param hbeat, reply *hbeat ) error {
 	fmt.Println(rx_param.Node_info.Address, " Active at Time: ", rx_param.Rx_time)
@@ -243,6 +251,34 @@ func (ln *LocalNode) Notify(message string) (error) {
 }
 
 func (ln *LocalNode) Ping() (error) {
+	return nil
+}
+
+func (ln *LocalNode) SkipSuccessor() error{
+	ln.successors[0] = ln.successors[1]
+	if (ln.successors[0] != nil) {
+		fmt.Println("Successor 0 Updated: " + ln.successors[0].Address)	
+	} else {
+        return errors.New("Empty Successive Successor")
+    }
+	
+	ln.successors[1] = ln.successors[2]
+	if (ln.successors[1] != nil) {
+		fmt.Println("Successor 1 Updated: " + ln.successors[1].Address)
+	} else {
+        return errors.New("Empty Successive Successor")
+    }
+	
+	var s_address string
+	e := ln.remote_GetSuccessor(ln.successors[1].Address, &s_address)
+	if (e!= nil) {
+		return e;
+	}
+	succ := new(Node)
+	succ.Address = s_address
+	succ.Id = GenHash(ln.config,s_address)
+	ln.successors[2] = succ 
+	fmt.Println("Successor 2 Updated: " + ln.successors[2].Address)
 	return nil
 }
 

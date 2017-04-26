@@ -85,6 +85,23 @@ func (ln *LocalNode) remote_Ping (address string) error {
 	}
 	return nil	
 }
+
+func (ln *LocalNode) remote_SkipSuccessor (address string) error {
+    var complete_address = address
+    t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Fatal("dialing error in remote_SkipSuccessor:", err)
+        return err
+    }
+    emp_reply:=new(struct{})
+    emp_args:=new(struct{})
+    err = t.Call("Node_RPC.SkipSuccessor_Stub",emp_args,&emp_reply)
+    if err != nil {
+        log.Println("sync Call error in remote_SkipSuccessor:", err) 
+        return err
+    }
+    return nil  
+}
 func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, ret_args *RPC_StabJoin) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
