@@ -42,6 +42,7 @@ type LocalNode struct {
 	config Config
 	// stabilized  time.Time
 	timer       *time.Timer
+	shutdown 	bool
 	Prev_read int
 }
 
@@ -66,6 +67,7 @@ func (ln *LocalNode) Init(config Config) {
 	// Generate an Id
 	ln.config = config
 	ln.Id = GenHash(ln.config, ln.Address)
+	ln.shutdown = false
 	// Initialize all state
 	ln.successors = make([]*Node, ln.config.NumSuccessors)
 	ln.finger = make([]*Node, ln.config.hashBits)
@@ -174,13 +176,16 @@ func (ln *LocalNode) Join(address string) error{
 	return nil
 }
 
-func (ln *LocalNode) Leave(address string) error{
+func (ln *LocalNode) Leave() error{
 	// add relevant code 
 	e := ln.StabilizeReplicasLeave()			//assuming successor exists
 	if (e!=nil) {
 		return e
 	}
-	ln.timer.Stop()
+	if (ln.timer!=nil) {
+		ln.timer.Stop()	
+	}
+	ln.shutdown = true
 	if (ln.predecessor != nil) {
 		ln.remote_SkipSuccessor(ln.predecessor.Address)
 	}
@@ -406,12 +411,20 @@ func (ln *LocalNode) Stabilize() {
 
 	defer ln.Schedule()
 
+	if (ln.successors[0]!=nil) {
+		if err := ln.updateSuccessors(); err != nil {
+			fmt.Printf("Stabilize error: %s", err)
+			return
+		}
+	}
+
 	if err := ln.checkNewSuccessor(); err != nil {
 		fmt.Printf("Stabilize error: %s", err)
 		return
 	}
 
-	if (ln.successors[0].Address == ln.Address) {
+	if (ln.successors[0]!=nil && ln.successors[0].Address == ln.Address) {
+		ln.check_predecessor()
 		if (ln.predecessor!=nil) {
 			ln.successors[0] = ln.predecessor
 			fmt.Println("Successor 0 Updated: " + ln.successors[0].Address)
@@ -442,7 +455,7 @@ func (ln *LocalNode) checkNewSuccessor() error {
 
 	predAddress := ""
 	err = ln.remote_GetPredecessor(successor, &predAddress)
-
+	// log.Println("Failed Predecessor")
 	if (err!=nil) {
 		return nil
 	}
@@ -499,7 +512,9 @@ func (ln *LocalNode) updateSuccessors() error {
 
 func (ln *LocalNode) Schedule() {
 	// Setup our stabilize timer
-	ln.timer = time.AfterFunc(randStabilize(ln.config), ln.Stabilize)
+	if !ln.shutdown {
+		ln.timer = time.AfterFunc(randStabilize(ln.config), ln.Stabilize)
+	}
 }
 
 func randStabilize(conf Config) time.Duration {

@@ -13,7 +13,7 @@ func (ln *LocalNode) remote_FindSuccessor (address string, key string, reply *st
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_FindSuccessor:", err)
+        log.Println("dialing error in remote_FindSuccessor:", err)
         return err
     }
     err = t.Call("Node_RPC.FindSuccessor_Stub",key,reply)
@@ -28,7 +28,7 @@ func (ln *LocalNode) remote_GetPredecessor (address string, reply *string) error
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_GetPredecessor:", err)
+        log.Println("dialing error in remote_GetPredecessor:", err)
         return err
     }
     emp_Arg:=new(struct{})
@@ -43,7 +43,7 @@ func (ln *LocalNode) remote_GetSuccessor (address string, reply *string) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_GetSuccessor:", err)
+        log.Println("dialing error in remote_GetSuccessor:", err)
         return err
     }
     emp_Arg:=new(struct{})
@@ -58,7 +58,7 @@ func (ln *LocalNode) remote_Notify (address string, message string) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_Notify:", err)
+        log.Println("dialing error in remote_Notify:", err)
         return err
     }
     emp_reply:=new(struct{})
@@ -73,7 +73,7 @@ func (ln *LocalNode) remote_Ping (address string) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_Ping:", err)
+        log.Println("dialing error in remote_Ping:", err)
         return err
     }
     emp_reply:=new(struct{})
@@ -90,7 +90,7 @@ func (ln *LocalNode) remote_SkipSuccessor (address string) error {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_SkipSuccessor:", err)
+        log.Println("dialing error in remote_SkipSuccessor:", err)
         return err
     }
     emp_reply:=new(struct{})
@@ -106,7 +106,7 @@ func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, ret
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_StabilizeReplicasJoin:", err)
+        log.Println("dialing error in remote_StabilizeReplicasJoin:", err)
         return err
     }
     err = t.Call("Node_RPC.StabilizeReplicasJoin_Stub",id,ret_args)
@@ -121,7 +121,7 @@ func (ln *LocalNode) remote_SendReplicasSuccessorJoin(address string, id []byte,
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_SendReplicasSuccessorJoin:", err)
+        log.Println("dialing error in remote_SendReplicasSuccessorJoin:", err)
         return err
     }
     emp_reply:=new(struct{})
@@ -139,7 +139,7 @@ func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_SendReplicasSuccessorLeave:", err)
+        log.Println("dialing error in remote_SendReplicasSuccessorLeave:", err)
         return err
     }
     emp_reply:=new(struct{})
@@ -158,7 +158,7 @@ func(ln *LocalNode) remote_Heartbeat(address string, rx_param hbeat, reply *hbea
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_Heartbeat:", err)
+        log.Println("dialing error in remote_Heartbeat:", err)
         return err
     }
     var args hbeat
@@ -177,7 +177,7 @@ func remote_ReadKey(address string,key string,replica_number int,val *string) (e
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_ReadKey:", err)
+        log.Println("dialing error in remote_ReadKey:", err)
         return err,nil
     }
     var args RPC_RDKey
@@ -202,7 +202,7 @@ func remote_WriteKey(address string,key string,val string,replica_number int) er
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_WriteKey:", err)
+        log.Println("dialing error in remote_WriteKey:", err)
         return err
     }
     var args RPC_WriteKey
@@ -222,7 +222,7 @@ func remote_DeleteKey(address string,key string,replica_number int) error {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
-        log.Fatal("dialing error in remote_DeleteKey:", err)
+        log.Println("dialing error in remote_DeleteKey:", err)
         return err
     }
     var args RPC_RDKey
