@@ -59,10 +59,14 @@ func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 func (ln *LocalNode) ReadKeyReplica(key string, replica_num int, val *string) error{
 	var ok bool
 	*val, ok = ln.data[replica_num][key]
+	fmt.Println(replica_num)
+	// PrintMap(ln.data[replica_num])
+	ln.PrintAllMaps()
 	if ok == false{
 		return errors.New("Key not present in the store")
 	}
 	log.Println("Read key: "+ key + " value : " + *val)
+
 	return nil
 }	
 
@@ -84,6 +88,7 @@ func (ln *LocalNode) WriteKey(key string, val string) error{
 		return e
 	}
 	e = remote_WriteKey(leader,key,val,0)
+
 	return e
 }
 

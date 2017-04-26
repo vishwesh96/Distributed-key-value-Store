@@ -117,7 +117,7 @@ func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, ret
 	return nil			
 }
 
-func (ln *LocalNode) remote_SendReplicasSuccessorJoin(address string, id []byte,replica_number int) error {
+func (ln *LocalNode) remote_SendReplicasSuccessorJoin(address string, id []byte,pred_id []byte,replica_number int) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
@@ -127,6 +127,7 @@ func (ln *LocalNode) remote_SendReplicasSuccessorJoin(address string, id []byte,
     emp_reply:=new(struct{})
     var args RPC_Join
     args.Id=id
+    args.Pred_id=pred_id
     args.Replica_number=replica_number
     err = t.Call("Node_RPC.SendReplicasSuccessorJoin_Stub",args,emp_reply)
 	if err != nil {
