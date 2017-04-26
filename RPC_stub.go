@@ -86,8 +86,13 @@ func(ln *LocalNode) ReadKey_Stub(args RPC_RDKey,val *string) error {
 		err:=ln.ReadKeyLeader(args.Key,val)
 		return err
 	} else {
-		err:=ln.ReadKeyReplica(args.Key,args.Replica_number,val)		
+		if(args.Replica_number==4) {
+			err:=ln.ReadKey(args.Key,val)
+			return err
+		} else {
+		err:=ln.ReadKeyReplica(args.Key,args.Replica_number,val)
 		return err
+		}
 	}
 }
 func(ln *LocalNode) WriteKey_Stub(args RPC_WriteKey,emp_reply *struct{}) error {
@@ -95,8 +100,13 @@ func(ln *LocalNode) WriteKey_Stub(args RPC_WriteKey,emp_reply *struct{}) error {
 		err:=ln.WriteKeyLeader(args.Key,args.Val)
 		return err
 	} else {
+		if(args.Replica_number==4){
+			err:=ln.WriteKey(args.Key,args.Val)
+			return err
+		} else {
 		err:=ln.WriteKeySuccessor(args.Key,args.Val,args.Replica_number)
 		return err
+		}
 	}
 }
 func(ln *LocalNode) DeleteKey_Stub(args RPC_RDKey,emp_reply *struct{}) error {
@@ -104,7 +114,12 @@ func(ln *LocalNode) DeleteKey_Stub(args RPC_RDKey,emp_reply *struct{}) error {
 		err:=ln.DeleteKeyLeader(args.Key)
 		return err
 	} else {
+		if(args.Replica_number==4) {
+			err:=ln.DeleteKey(args.Key)
+			return err	
+		} else {
 		err:=ln.DeleteKeySuccessor(args.Key,args.Replica_number)
 		return err
+		}
 	}
 }

@@ -156,26 +156,32 @@ func(ln *LocalNode) remote_Heartbeat(address string, rx_param hbeat, reply *hbea
 	return nil	
 }
 
-func(ln *LocalNode) remote_ReadKey(address string,key string,replica_number int,val *string) error {
+func remote_ReadKey(address string,key string,replica_number int,val *string) (error, *rpc.Call) {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
         log.Fatal("dialing error in remote_ReadKey:", err)
-        return err
+        return err,nil
     }
     var args RPC_RDKey
     args.Key=key
     args.Replica_number=replica_number
-    Async_Call := t.Go("Node_RPC.ReadKey_Stub",args,val,nil)
-    err=Async_Call.Error
+    var Async_Call *rpc.Call
+    if(replica_number!=4){
+        Async_Call = t.Go("Node_RPC.ReadKey_stub",args,val,nil)
+        err=Async_Call.Error
+    } else {
+        err = t.Call("Node_RPC.ReadKey_stub",args,val)     
+        Async_Call = nil
+    }
     if err != nil {
         log.Println("sync Call error in remote_ReadKey:", err) 
-        return err
+        return err,nil
     }
-    return nil     
+    return nil,Async_Call     
 }
 
-func(ln *LocalNode) remote_WriteKey(address string,key string,val string,replica_number int) error {
+func remote_WriteKey(address string,key string,val string,replica_number int) error {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
@@ -195,7 +201,7 @@ func(ln *LocalNode) remote_WriteKey(address string,key string,val string,replica
     return nil     
 }
 
-func(ln *LocalNode) remote_DeleteKey(address string,key string,replica_number int) error {
+func remote_DeleteKey(address string,key string,replica_number int) error {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
