@@ -137,14 +137,14 @@ func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data
 	return nil	
 }
 
-func(ln *LocalNode) remote_Heartbeat(address string, rx_param hbeat, reply *hbeat ) error {
+func(ln *LocalNode) Remote_Heartbeat(address string, reply *Hbeat ) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
         log.Fatal("dialing error in remote_Heartbeat:", err)
         return err
     }
-    var args hbeat
+    var args Hbeat
     args.Node_info=ln.Node
     args.Rx_time=time.Now()
     Async_Call := t.Go("Node_RPC.Heartbeat_Stub",args,reply,nil)
@@ -153,7 +153,22 @@ func(ln *LocalNode) remote_Heartbeat(address string, rx_param hbeat, reply *hbea
     	log.Println("sync Call error in remote_Heartbeat:", err) 
     	return err
 	}
-	return nil	
+	return nil
+}
+
+func(ln *LocalNode) remote_GetRemoteData(address string, replica_number int,data_reply *map[string]string) error {
+    var complete_address = address
+    t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Fatal("dialing error in remote_GetRemoteData:", err)
+        return err
+    }
+    err = t.Call("Node_RPC.GetRemoteData_Stub",replica_number,data_reply)
+    if err != nil {
+        log.Println("sync Call error in remote_GetRemoteData:", err) 
+        return err
+    }
+    return nil     
 }
 
 func remote_ReadKey(address string,key string,replica_number int,val *string) (error, *rpc.Call) {
