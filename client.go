@@ -4,7 +4,7 @@ import (
 	"errors"
     "strconv"
     "log"
-    "fmt"
+    "os"
 )
 
 func Client_remoteRead(address string, key string, val *string) error {
@@ -18,6 +18,9 @@ func (ln * LocalNode) ReadKey(key string, val *string) error{
 	if e!=nil {
 		return e
 	}
+	log.SetOutput(os.Stderr)
+	log.Println("Found successor for key : "+key+" - " + *leader)
+	log.SetOutput(ln.logfile)				
 	log.Println("Found successor for key : "+key+" - " + *leader)
 	if (*leader==ln.Address) {
 		e := ln.ReadKeyLeader(key, val)
@@ -35,7 +38,6 @@ func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 	ln.Prev_read = ln.Prev_read+1
 	ln.PrintAllMaps()
 
-	// fmt.Println("read key : " + *val)
 	ln.Prev_read++
 	if to_read==0 || ln.successors[0]==nil || ln.successors[0].Address==ln.Address{
 		var ok bool
@@ -43,6 +45,9 @@ func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 		if ok == false{
 			return errors.New("Key not present in the store")
 		}
+		log.SetOutput(os.Stderr)
+		log.Println("Read key: "+ key + " value : " + *val +" Node Address " + ln.Address)
+		log.SetOutput(ln.logfile)				
 		log.Println("Read key: "+ key + " value : " + *val +" Node Address " + ln.Address)
 	} else {
 		if to_read==1 || ln.successors[1]==nil || ln.successors[1].Address==ln.Address {
@@ -62,12 +67,14 @@ func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 func (ln *LocalNode) ReadKeyReplica(key string, replica_num int, val *string) error{
 	var ok bool
 	*val, ok = ln.data[replica_num][key]
-	fmt.Println(replica_num)
 	// PrintMap(ln.data[replica_num])
 	// ln.PrintAllMaps()
 	if ok == false{
 		return errors.New("Key not present in the store")
 	}
+	log.SetOutput(os.Stderr)
+	log.Println("Read key: "+ key + " value : " + *val +" Node Address " + ln.Address)
+	log.SetOutput(ln.logfile)				
 	log.Println("Read key: "+ key + " value : " + *val+ " Node Address " + ln.Address)
 
 	return nil
@@ -85,6 +92,9 @@ func (ln *LocalNode) WriteKey(key string, val string) error{
 	if e!=nil {
 		return e
 	}
+	log.SetOutput(os.Stderr)
+	log.Println("Found successor for key : "+key+" - " + leader)
+	log.SetOutput(ln.logfile)				
 	log.Println("Found successor for key : "+key+" - " + leader)
 	if (leader==ln.Address) {
 		e = ln.WriteKeyLeader(key, val)
@@ -97,8 +107,10 @@ func (ln *LocalNode) WriteKey(key string, val string) error{
 
 func (ln * LocalNode) WriteKeyLeader(key string, val string) error{
 
-	fmt.Println(len(ln.data))
 	ln.data[0][key] = val
+	log.SetOutput(os.Stderr)
+	log.Println("Write key: "+ key + " value : " + val + " On Node Address " + ln.Address)
+	log.SetOutput(ln.logfile)				
 	log.Println("Write key: "+ key + " value : " + val + " On Node Address " + ln.Address)
 	//check successor exists
 	if (ln.successors[0]!=nil && ln.successors[0].Address!=ln.Address) {
@@ -122,6 +134,9 @@ func (ln * LocalNode) WriteKeySuccessor(key string, val string, replica_number i
 		return errors.New("Not enough replicas")
 	}
 	ln.data[replica_number][key] = val
+	log.SetOutput(os.Stderr)
+	log.Println("Write key: "+ key + " value : " + val + " On Node Address " + ln.Address)
+	log.SetOutput(ln.logfile)
 	log.Println("Write key: "+ key + " value : " + val + " On Node Address " + ln.Address)
 	return nil
 }
@@ -136,6 +151,10 @@ func (ln *LocalNode) DeleteKey(key string) error{
 	if e!=nil {
 		return e
 	}
+
+	log.SetOutput(os.Stderr)
+	log.Println("Found successor for key : "+key+" - " + leader)
+	log.SetOutput(ln.logfile)
 	log.Println("Found successor for key : "+key+" - " + leader)
 	if (leader==ln.Address) {
 		ln.DeleteKeyLeader(key)
@@ -151,6 +170,9 @@ func (ln * LocalNode) DeleteKeyLeader(key string) error{
 			return errors.New("Key not present in Leader")
 		}
 		delete(ln.data[0],key)
+		log.SetOutput(os.Stderr)
+		log.Println("Delete key: "+ key)
+		log.SetOutput(ln.logfile)
 		log.Println("Delete key: "+ key)
 		//check successor exists
 		if (ln.successors[0]!=nil && ln.successors[0].Address!=ln.Address) {
@@ -177,6 +199,9 @@ func (ln * LocalNode) DeleteKeySuccessor(key string, replica_number int) error{
 		return errors.New("Key not present in replica" + strconv.Itoa(replica_number))
 	}
 	delete(ln.data[replica_number],key)
+	log.SetOutput(os.Stderr)
+	log.Println("Delete key: "+ key)
+	log.SetOutput(ln.logfile)	
 	log.Println("Delete key: "+ key)
 	return nil
 }

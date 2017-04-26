@@ -4,21 +4,27 @@ import (
 	"log"
 	"net/rpc"
 	"time"
+    "os"
     // "fmt"
 )
 
 // Remote Function Calls
 func (ln *LocalNode) remote_FindSuccessor (address string, key string, reply *string) error {
-    log.Println("Call")
-	var complete_address = address
+    var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("dialing error in remote_FindSuccessor:", err)
+        log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_FindSuccessor:", err)
         return err
     }
     err = t.Call("Node_RPC.FindSuccessor_Stub",key,reply)
 	if err != nil {
-    	log.Println("sync Call error in remote_FindSuccessor:", err) 
+    	log.SetOutput(os.Stderr)
+        log.Println("sync Call error in remote_FindSuccessor:", err)
+        log.SetOutput(ln.logfile)
+        log.Println("sync Call error in remote_FindSuccessor:", err) 
     	return err
 	}
 	return nil
@@ -28,12 +34,18 @@ func (ln *LocalNode) remote_GetPredecessor (address string, reply *string) error
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("dialing error in remote_GetPredecessor:", err)
+        log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_GetPredecessor:", err)
         return err
     }
     emp_Arg:=new(struct{})
     err = t.Call("Node_RPC.GetPredecessor_Stub",emp_Arg,reply)
 	if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("sync Call error in remote_GetPredecessor:", err) 
+        log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_GetPredecessor:", err) 
     	return err
 	}
@@ -43,12 +55,18 @@ func (ln *LocalNode) remote_GetSuccessor (address string, reply *string) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("dialing error in remote_GetSuccessor:", err)
+        log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_GetSuccessor:", err)
         return err
     }
     emp_Arg:=new(struct{})
     err = t.Call("Node_RPC.GetSuccessor_Stub",emp_Arg,reply)
 	if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("sync Call error in remote_GetSuccessor:", err) 
+        log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_GetSuccessor:", err) 
     	return err
 	}
@@ -58,13 +76,19 @@ func (ln *LocalNode) remote_Notify (address string, message string) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("dialing error in remote_Notify:", err)
+        log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_Notify:", err)
         return err
     }
     emp_reply:=new(struct{})
     err = t.Call("Node_RPC.Notify_Stub",message,&emp_reply)
 	if err != nil {
-    	log.Println("sync Call error in remote_Notify:", err) 
+    	log.SetOutput(os.Stderr)
+        log.Println("sync Call error in remote_Notify:", err) 
+        log.SetOutput(ln.logfile)
+        log.Println("sync Call error in remote_Notify:", err) 
     	return err
 	}
 	return nil	
@@ -73,6 +97,9 @@ func (ln *LocalNode) remote_Ping (address string) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("dialing error in remote_Ping:", err) 
+        log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_Ping:", err)
         return err
     }
@@ -80,6 +107,9 @@ func (ln *LocalNode) remote_Ping (address string) error {
     emp_args:=new(struct{})
     err = t.Call("Node_RPC.Ping_Stub",emp_args,&emp_reply)
 	if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("sync Call error in remote_Ping:", err)  
+        log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_Ping:", err) 
     	return err
 	}
@@ -90,6 +120,9 @@ func (ln *LocalNode) remote_SkipSuccessor (address string) error {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("dialing error in remote_SkipSuccessor:", err)
+        log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_SkipSuccessor:", err)
         return err
     }
@@ -97,6 +130,9 @@ func (ln *LocalNode) remote_SkipSuccessor (address string) error {
     emp_args:=new(struct{})
     err = t.Call("Node_RPC.SkipSuccessor_Stub",emp_args,&emp_reply)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("sync Call error in remote_SkipSuccessor:", err) 
+        log.SetOutput(ln.logfile)
         log.Println("sync Call error in remote_SkipSuccessor:", err) 
         return err
     }
@@ -106,11 +142,18 @@ func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, ret
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("dialing error in remote_StabilizeReplicasJoin:", err)
+        log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_StabilizeReplicasJoin:", err)
         return err
     }
     err = t.Call("Node_RPC.StabilizeReplicasJoin_Stub",id,ret_args)
 	if err != nil {
+
+        log.SetOutput(os.Stderr)
+        log.Println("sync Call error in remote_StabilizeReplicasJoin:", err) 
+        log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_StabilizeReplicasJoin:", err) 
     	return err
 	}
@@ -121,6 +164,9 @@ func (ln *LocalNode) remote_SendReplicasSuccessorJoin(address string, id []byte,
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("dialing error in remote_SendReplicasSuccessorJoin:", err)
+        log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_SendReplicasSuccessorJoin:", err)
         return err
     }
@@ -131,6 +177,9 @@ func (ln *LocalNode) remote_SendReplicasSuccessorJoin(address string, id []byte,
     args.Replica_number=replica_number
     err = t.Call("Node_RPC.SendReplicasSuccessorJoin_Stub",args,emp_reply)
 	if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("sync Call error in remote_SendReplicasSuccessorJoin:", err) 
+        log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_SendReplicasSuccessorJoin:", err) 
     	return err
 	}
@@ -140,6 +189,9 @@ func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("dialing error in remote_SendReplicasSuccessorLeave:", err)
+        log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_SendReplicasSuccessorLeave:", err)
         return err
     }
@@ -149,6 +201,9 @@ func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data
     args.Replica_number=replica_number
     err = t.Call("Node_RPC.SendReplicasSuccessorLeave_Stub",args,emp_reply)
 	if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("sync Call error in remote_SendReplicasSuccessorLeave:", err) 
+        log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_SendReplicasSuccessorLeave:", err) 
     	return err
 	}
@@ -159,6 +214,9 @@ func(ln *LocalNode) Remote_Heartbeat(address string, reply *Hbeat ) error {
 	var complete_address = address
 	t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("dialing error in remote_Heartbeat:", err) 
+        log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_Heartbeat:", err)
         return err
     }
@@ -168,6 +226,9 @@ func(ln *LocalNode) Remote_Heartbeat(address string, reply *Hbeat ) error {
     Async_Call := t.Go("Node_RPC.Heartbeat_Stub",args,reply,nil)
 	err=Async_Call.Error
 	if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Println("sync Call error in remote_Heartbeat:", err)  
+        log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_Heartbeat:", err) 
     	return err
 	}
@@ -178,11 +239,18 @@ func(ln *LocalNode) remote_GetRemoteData(address string, replica_number int,data
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
+        log.SetOutput(os.Stderr)
+        log.Fatal("dialing error in remote_GetRemoteData:", err)
+        log.SetOutput(ln.logfile)
         log.Fatal("dialing error in remote_GetRemoteData:", err)
         return err
     }
     err = t.Call("Node_RPC.GetRemoteData_Stub",replica_number,data_reply)
     if err != nil {
+
+        log.SetOutput(os.Stderr)
+        log.Fatal("dialing error in remote_GetRemoteData:", err)
+        log.SetOutput(ln.logfile)
         log.Println("sync Call error in remote_GetRemoteData:", err) 
         return err
     }
@@ -190,6 +258,7 @@ func(ln *LocalNode) remote_GetRemoteData(address string, replica_number int,data
 }
 
 func remote_ReadKey(address string,key string,replica_number int,val *string) (error, *rpc.Call) {
+    log.SetOutput(os.Stderr)
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
@@ -215,6 +284,7 @@ func remote_ReadKey(address string,key string,replica_number int,val *string) (e
 }
 
 func remote_WriteKey(address string,key string,val string,replica_number int) error {
+    log.SetOutput(os.Stderr)
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
@@ -235,6 +305,7 @@ func remote_WriteKey(address string,key string,val string,replica_number int) er
 }
 
 func remote_DeleteKey(address string,key string,replica_number int) error {
+    log.SetOutput(os.Stderr)
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
