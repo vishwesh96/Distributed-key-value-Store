@@ -155,7 +155,7 @@ func(ln *LocalNode) remote_Heartbeat(address string, rx_param hbeat, reply *hbea
 	return nil	
 }
 
-func(ln *LocalNode) remote_ReadKey(address string,key string,replica_number int,val *string) error {
+func remote_ReadKey(address string,key string,replica_number int,val *string) error {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
@@ -174,7 +174,7 @@ func(ln *LocalNode) remote_ReadKey(address string,key string,replica_number int,
     return nil     
 }
 
-func(ln *LocalNode) remote_WriteKey(address string,key string,val string,replica_number int) error {
+func remote_WriteKey(address string,key string,val string,replica_number int) error {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
@@ -194,7 +194,7 @@ func(ln *LocalNode) remote_WriteKey(address string,key string,val string,replica
     return nil     
 }
 
-func(ln *LocalNode) remote_DeleteKey(address string,key string,replica_number int) error {
+func remote_DeleteKey(address string,key string,replica_number int) error {
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
