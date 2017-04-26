@@ -17,6 +17,7 @@ func (ln *LocalNode) remote_FindSuccessor (address string, key string, reply *st
         log.Println("dialing error in remote_FindSuccessor:", err)
         log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_FindSuccessor:", err)
+        t.Close()
         return err
     }
     err = t.Call("Node_RPC.FindSuccessor_Stub",key,reply)
@@ -25,8 +26,10 @@ func (ln *LocalNode) remote_FindSuccessor (address string, key string, reply *st
         log.Println("sync Call error in remote_FindSuccessor:", err)
         log.SetOutput(ln.logfile)
         log.Println("sync Call error in remote_FindSuccessor:", err) 
-    	return err
+    	t.Close()
+        return err
 	}
+    t.Close()
 	return nil
 
 }
@@ -38,6 +41,7 @@ func (ln *LocalNode) remote_GetPredecessor (address string, reply *string) error
         log.Println("dialing error in remote_GetPredecessor:", err)
         log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_GetPredecessor:", err)
+        t.Close()
         return err
     }
     emp_Arg:=new(struct{})
@@ -47,8 +51,11 @@ func (ln *LocalNode) remote_GetPredecessor (address string, reply *string) error
         log.Println("sync Call error in remote_GetPredecessor:", err) 
         log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_GetPredecessor:", err) 
-    	return err
+    	t.Close()
+        return err
 	}
+
+    t.Close()
 	return nil	
 }
 func (ln *LocalNode) remote_GetSuccessor (address string, reply *string) error {
@@ -59,6 +66,7 @@ func (ln *LocalNode) remote_GetSuccessor (address string, reply *string) error {
         log.Println("dialing error in remote_GetSuccessor:", err)
         log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_GetSuccessor:", err)
+        t.Close()
         return err
     }
     emp_Arg:=new(struct{})
@@ -68,8 +76,10 @@ func (ln *LocalNode) remote_GetSuccessor (address string, reply *string) error {
         log.Println("sync Call error in remote_GetSuccessor:", err) 
         log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_GetSuccessor:", err) 
-    	return err
+    	t.Close()
+        return err
 	}
+    t.Close()
 	return nil	
 }
 func (ln *LocalNode) remote_Notify (address string, message string) error {
@@ -80,6 +90,7 @@ func (ln *LocalNode) remote_Notify (address string, message string) error {
         log.Println("dialing error in remote_Notify:", err)
         log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_Notify:", err)
+        t.Close()
         return err
     }
     emp_reply:=new(struct{})
@@ -89,8 +100,10 @@ func (ln *LocalNode) remote_Notify (address string, message string) error {
         log.Println("sync Call error in remote_Notify:", err) 
         log.SetOutput(ln.logfile)
         log.Println("sync Call error in remote_Notify:", err) 
+        t.Close()
     	return err
 	}
+    t.Close()
 	return nil	
 }
 func (ln *LocalNode) remote_Ping (address string) error {
@@ -101,6 +114,7 @@ func (ln *LocalNode) remote_Ping (address string) error {
         log.Println("dialing error in remote_Ping:", err) 
         log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_Ping:", err)
+        t.Close()
         return err
     }
     emp_reply:=new(struct{})
@@ -111,8 +125,11 @@ func (ln *LocalNode) remote_Ping (address string) error {
         log.Println("sync Call error in remote_Ping:", err)  
         log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_Ping:", err) 
-    	return err
+    	t.Close()
+        return err
 	}
+
+    t.Close()
 	return nil	
 }
 
@@ -124,6 +141,7 @@ func (ln *LocalNode) remote_SkipSuccessor (address string) error {
         log.Println("dialing error in remote_SkipSuccessor:", err)
         log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_SkipSuccessor:", err)
+        t.Close()
         return err
     }
     emp_reply:=new(struct{})
@@ -134,8 +152,11 @@ func (ln *LocalNode) remote_SkipSuccessor (address string) error {
         log.Println("sync Call error in remote_SkipSuccessor:", err) 
         log.SetOutput(ln.logfile)
         log.Println("sync Call error in remote_SkipSuccessor:", err) 
+        t.Close()
         return err
     }
+
+    t.Close()
     return nil  
 }
 func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, ret_args *RPC_StabJoin) error {
@@ -146,6 +167,7 @@ func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, ret
         log.Println("dialing error in remote_StabilizeReplicasJoin:", err)
         log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_StabilizeReplicasJoin:", err)
+        t.Close()
         return err
     }
     err = t.Call("Node_RPC.StabilizeReplicasJoin_Stub",id,ret_args)
@@ -155,8 +177,11 @@ func (ln *LocalNode) remote_StabilizeReplicasJoin(address string, id []byte, ret
         log.Println("sync Call error in remote_StabilizeReplicasJoin:", err) 
         log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_StabilizeReplicasJoin:", err) 
-    	return err
+    	t.Close()
+        return err
 	}
+
+    t.Close()
 	return nil			
 }
 
@@ -168,6 +193,7 @@ func (ln *LocalNode) remote_SendReplicasSuccessorJoin(address string, id []byte,
         log.Println("dialing error in remote_SendReplicasSuccessorJoin:", err)
         log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_SendReplicasSuccessorJoin:", err)
+        t.Close()
         return err
     }
     emp_reply:=new(struct{})
@@ -181,8 +207,11 @@ func (ln *LocalNode) remote_SendReplicasSuccessorJoin(address string, id []byte,
         log.Println("sync Call error in remote_SendReplicasSuccessorJoin:", err) 
         log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_SendReplicasSuccessorJoin:", err) 
-    	return err
+    	t.Close()
+        return err
 	}
+
+    t.Close()
 	return nil	
 }
 func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data map[string]string,replica_number int) error{
@@ -193,6 +222,7 @@ func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data
         log.Println("dialing error in remote_SendReplicasSuccessorLeave:", err)
         log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_SendReplicasSuccessorLeave:", err)
+        t.Close()
         return err
     }
     emp_reply:=new(struct{})
@@ -205,8 +235,11 @@ func (ln *LocalNode) remote_SendReplicasSuccessorLeave(address string, pred_data
         log.Println("sync Call error in remote_SendReplicasSuccessorLeave:", err) 
         log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_SendReplicasSuccessorLeave:", err) 
-    	return err
+    	t.Close()
+        return err
 	}
+
+    t.Close()
 	return nil	
 }
 
@@ -218,6 +251,7 @@ func(ln *LocalNode) Remote_Heartbeat(address string, reply *Hbeat ) error {
         log.Println("dialing error in remote_Heartbeat:", err) 
         log.SetOutput(ln.logfile)
         log.Println("dialing error in remote_Heartbeat:", err)
+        t.Close()
         return err
     }
     var args Hbeat
@@ -230,8 +264,11 @@ func(ln *LocalNode) Remote_Heartbeat(address string, reply *Hbeat ) error {
         log.Println("sync Call error in remote_Heartbeat:", err)  
         log.SetOutput(ln.logfile)
     	log.Println("sync Call error in remote_Heartbeat:", err) 
-    	return err
+    	t.Close()
+        return err
 	}
+
+    t.Close()
 	return nil
 }
 
@@ -243,6 +280,7 @@ func(ln *LocalNode) remote_GetRemoteData(address string, replica_number int,data
         log.Fatal("dialing error in remote_GetRemoteData:", err)
         log.SetOutput(ln.logfile)
         log.Fatal("dialing error in remote_GetRemoteData:", err)
+        t.Close()
         return err
     }
     err = t.Call("Node_RPC.GetRemoteData_Stub",replica_number,data_reply)
@@ -252,8 +290,11 @@ func(ln *LocalNode) remote_GetRemoteData(address string, replica_number int,data
         log.Fatal("dialing error in remote_GetRemoteData:", err)
         log.SetOutput(ln.logfile)
         log.Println("sync Call error in remote_GetRemoteData:", err) 
+        t.Close()
         return err
     }
+
+    t.Close()
     return nil     
 }
 
@@ -263,6 +304,7 @@ func remote_ReadKey(address string,key string,replica_number int,val *string) (e
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
         log.Println("dialing error in remote_ReadKey:", err)
+        t.Close()
         return err,nil
     }
     var args RPC_RDKey
@@ -278,8 +320,11 @@ func remote_ReadKey(address string,key string,replica_number int,val *string) (e
     }
     if err != nil {
         log.Println("sync Call error in remote_ReadKey:", err) 
+        t.Close()        
         return err,nil
     }
+
+    t.Close()
     return nil,Async_Call     
 }
 
@@ -289,6 +334,7 @@ func remote_WriteKey(address string,key string,val string,replica_number int) er
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
         log.Println("dialing error in remote_WriteKey:", err)
+        t.Close()
         return err
     }
     var args RPC_WriteKey
@@ -299,8 +345,11 @@ func remote_WriteKey(address string,key string,val string,replica_number int) er
     err = t.Call("Node_RPC.WriteKey_Stub",args,emp_reply)
     if err != nil {
         log.Println("sync Call error in remote_WriteKey:", err) 
+        t.Close()
         return err
     }
+
+    t.Close()
     return nil     
 }
 
@@ -310,6 +359,7 @@ func remote_DeleteKey(address string,key string,replica_number int) error {
     t, err := rpc.DialHTTP("tcp", complete_address)
     if err != nil {
         log.Println("dialing error in remote_DeleteKey:", err)
+        t.Close()
         return err
     }
     var args RPC_RDKey
@@ -319,7 +369,10 @@ func remote_DeleteKey(address string,key string,replica_number int) error {
     err = t.Call("Node_RPC.DeleteKey_Stub",args,emp_reply)
     if err != nil {
         log.Println("sync Call error in remote_DeleteKey:", err) 
+        t.Close()
         return err
     }
+
+    t.Close()
     return nil     
 }
