@@ -27,7 +27,7 @@ type RPC_WriteKey struct {
 	Replica_number int
 }
 
-type hbeat struct{ 
+type Hbeat struct{ 
 	Rx_time time.Time
 	Node_info Node
 }
@@ -39,10 +39,11 @@ type Node_RPC interface{
 	StabilizeReplicasJoin_Stub(id []byte,ret_args *RPC_StabJoin) error 
 	SendReplicasSuccessorJoin_Stub(args RPC_Join, emp_reply *struct{}) error 
 	SendReplicasSuccessorLeave_Stub(args RPC_Leave, emp_reply *struct{}) error
-	Heartbeat_Stub(rx_param hbeat, reply *hbeat) error
+	Heartbeat_Stub(rx_param Hbeat, reply *Hbeat) error
 	ReadKey_Stub(args RPC_RDKey, val *string) error
 	WriteKey_Stub(args RPC_WriteKey,emp_reply *struct{}) error
 	DeleteKey_Stub(args RPC_RDKey, emp_reply *struct{}) error
+	GetRemoteData_Stub(replica_number int, data_reply *map[string]string) error
 }
 
 func (ln *LocalNode) FindSuccessor_Stub(key string, reply *string) error {
@@ -57,12 +58,21 @@ func (ln *LocalNode) GetSuccessor_Stub(emp_arg struct{}, reply *string) error {
 	err := ln.GetSuccessor(reply)
 	return err
 }
+func (ln *LocalNode) GetRemoteData_Stub(replica_number int, data_reply *map[string]string) error {
+	err :=ln.GetRemoteData(replica_number,data_reply)
+	return err
+}
+
 func (ln *LocalNode) Notify_Stub(message string, emp_reply *struct{}) error {
 	err := ln.Notify(message)
 	return err
 }
 func (ln *LocalNode) Ping_Stub(emp_arg struct{},emp_reply *struct{}) error {
 	err:=ln.Ping()
+	return err
+}
+func (ln *LocalNode) SkipSuccessor_Stub(emp_arg struct{},emp_reply *struct{}) error {
+	err:=ln.SkipSuccessor()
 	return err
 }
 func(ln *LocalNode) StabilizeReplicasJoin_Stub(id []byte, ret_args *RPC_StabJoin) error {
@@ -77,7 +87,7 @@ func(ln *LocalNode)	SendReplicasSuccessorLeave_Stub(args RPC_Leave, emp_reply *s
 	err:= ln.SendReplicasSuccessorLeave(args.Pred_data,args.Replica_number)
 	return err	
 }
-func(ln *LocalNode) Heartbeat_Stub(rx_param hbeat, reply *hbeat) error {
+func(ln *LocalNode) Heartbeat_Stub(rx_param Hbeat, reply *Hbeat) error {
 	err:=ln.Heartbeat(rx_param, reply)
 	return err
 }
