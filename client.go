@@ -32,6 +32,9 @@ func (ln *LocalNode) ReadKeyLeader(key string,val *string) error {
 	//Trivial Load Balancing
 	var to_read int
 	to_read=(ln.Prev_read+1)%3
+	ln.Prev_read = ln.Prev_read+1
+	ln.PrintAllMaps()
+
 	// fmt.Println("read key : " + *val)
 	ln.Prev_read++
 	if to_read==0 || ln.successors[0]==nil || ln.successors[0].Address==ln.Address{
@@ -61,7 +64,7 @@ func (ln *LocalNode) ReadKeyReplica(key string, replica_num int, val *string) er
 	*val, ok = ln.data[replica_num][key]
 	fmt.Println(replica_num)
 	// PrintMap(ln.data[replica_num])
-	ln.PrintAllMaps()
+	// ln.PrintAllMaps()
 	if ok == false{
 		return errors.New("Key not present in the store")
 	}

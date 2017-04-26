@@ -251,7 +251,7 @@ func (ln *LocalNode) GetSuccessor(reply *string) (error) {
 			return nil
 		}
 	}
-	
+	ln.mux.Unlock()
 	return errors.New("Successor not found")
 }
 
@@ -454,18 +454,37 @@ func (ln *LocalNode) SendReplicasSuccessorJoin(id []byte,pred_id []byte, replica
 
 
 func (ln *LocalNode) StabilizeReplicasLeave() error {
-	e0 := ln.remote_SendReplicasSuccessorLeave(ln.successors[0].Address,ln.data[2],0)
-	if e0 != nil{
-		return e0
-	}
-	e1 := ln.remote_SendReplicasSuccessorLeave(ln.successors[1].Address,ln.data[1],1)
-	if e1 != nil{
-		return e1
-	}
-	e2 := ln.remote_SendReplicasSuccessorLeave(ln.successors[2].Address,ln.data[0],2)
-	if e2 != nil{
-		return e2
-	}
+	var e0 error
+	var e1 error
+	var e2 error
+	if(bytes.Compare(ln.Id,ln.successors[1].Id)==0){
+		e0 = ln.remote_SendReplicasSuccessorLeave(ln.successors[0].Address,ln.data[2],0)
+		if e0 != nil{
+			return e0
+		}		
+	}else if (bytes.Compare(ln.Id,ln.successors[2].Id)==0){
+		e0 = ln.remote_SendReplicasSuccessorLeave(ln.successors[0].Address,nil,0)
+		if e0 != nil{
+			return e0
+		}
+		e1 = ln.remote_SendReplicasSuccessorLeave(ln.successors[1].Address,nil,1)
+		if e1 != nil{
+			return e1
+		}
+	}else {
+		e0 = ln.remote_SendReplicasSuccessorLeave(ln.successors[0].Address,ln.data[2],0)
+		if e0 != nil{
+			return e0
+		}
+		e1 = ln.remote_SendReplicasSuccessorLeave(ln.successors[1].Address,ln.data[1],1)
+		if e1 != nil{
+			return e1
+		}
+		e2 = ln.remote_SendReplicasSuccessorLeave(ln.successors[2].Address,ln.data[0],2)
+		if e2 != nil{
+			return e2
+		}	
+	}	
 	return nil
 }
 
@@ -565,7 +584,7 @@ func (ln *LocalNode) HeartBeatCheck() {
 	err_0:=ln.Remote_Heartbeat(ln.successors[0].Address,reply_0)
 	err_1:=ln.Remote_Heartbeat(ln.successors[1].Address,reply_1)
 	err_2:=ln.Remote_Heartbeat(ln.successors[2].Address,reply_2)
-		ln.mux.Lock()
+		// ln.mux.Lock()
 	var succ_data map[string]string
 	for ((time.Since(Hbeat_start))*time.Second<ln.config.HeartBeatTime) {
 	}
@@ -585,9 +604,9 @@ func (ln *LocalNode) HeartBeatCheck() {
 			fmt.Println("Successor 1 Updated: " + ln.successors[1].Address)
 			if (ln.successors[1].Address != failNode) {
 				s_address := ""
-				ln.mux.Unlock()
+				// ln.mux.Unlock()
 				e := ln.remote_GetSuccessor(ln.successors[2].Address, &s_address)
-				ln.mux.Lock()
+				// ln.mux.Lock()
 				if (e!= nil) {
 					log.Fatal("Cant get successor in Stabilize, Aboting...")
 				}
@@ -604,30 +623,30 @@ func (ln *LocalNode) HeartBeatCheck() {
 		}
 		
 		//Successor 0 is down: Collect Data Also
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 		succ_err:=ln.remote_GetRemoteData(ln.successors[0].Address,1,&succ_data)
-		ln.mux.Lock()
+		// ln.mux.Lock()
 		if(succ_err!=nil) {
 			log.Fatal("Unexepected Failure, Aborting...",succ_err)
 		}
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 		err00:=ln.remote_SendReplicasSuccessorLeave(ln.successors[0].Address,ln.data[1],0)
-		ln.mux.Lock()
+		// ln.mux.Lock()
 		if(err00!=nil){
 			log.Fatal("Unexepected Failure, Aborting...")
 		}
 		if (ln.successors[1].Address != failNode) {
-			ln.mux.Unlock()
+			// ln.mux.Unlock()
 			err01:=ln.remote_SendReplicasSuccessorLeave(ln.successors[1].Address,ln.data[0],1)
-			ln.mux.Lock()
+			// ln.mux.Lock()
 			if(err01!=nil){
 				log.Fatal("Unexepected Failure, Aborting...")
 			}
 		}
 		if (ln.successors[2].Address != failNode) {
-			ln.mux.Unlock()
+			// ln.mux.Unlock()
 			err02:=ln.remote_SendReplicasSuccessorLeave(ln.successors[2].Address,succ_data,2)
-			ln.mux.Lock()
+			// ln.mux.Lock()
 			if(err02!=nil){
 				log.Fatal("Unexepected Failure, Aborting...")
 			}
@@ -642,9 +661,9 @@ func (ln *LocalNode) HeartBeatCheck() {
 			fmt.Println("Successor 1 Updated: " + ln.successors[2].Address)
 			s_address := ""
 			addr:=ln.successors[2].Address
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 			e := ln.remote_GetSuccessor(addr, &s_address)
-		ln.mux.Lock()
+		// ln.mux.Lock()
 			if (e!= nil) {
 				log.Fatal("Cant get successor in Stabilize, Aboting...")
 			}
@@ -675,7 +694,7 @@ func (ln *LocalNode) HeartBeatCheck() {
 		// ln.successors[2] = succ 
 
 	}
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 }
 
 func (ln *LocalNode) checkNewSuccessor() error {
@@ -686,14 +705,14 @@ func (ln *LocalNode) checkNewSuccessor() error {
 		return err
 	}
 
-		ln.mux.Lock()
+		// ln.mux.Lock()
 	predAddress := ""
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 	err = ln.remote_GetPredecessor(successor, &predAddress)
-		ln.mux.Lock()
+		// ln.mux.Lock()
 	// log.Println("Failed Predecessor")
 	if (err!=nil) {
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 		return nil
 	}
 
@@ -715,19 +734,19 @@ func (ln *LocalNode) checkNewSuccessor() error {
 
 	}
 
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 	return nil
 }
 
 func (ln *LocalNode) updateSuccessors() error {
-		ln.mux.Lock()
+		// ln.mux.Lock()
 	s_address := ""
 	addr := ln.successors[0].Address
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 	e := ln.remote_GetSuccessor(addr, &s_address)
-		ln.mux.Lock()
+		// ln.mux.Lock()
 	if (e!= nil) {
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 		return e
 	}
 	succ := new(Node)
@@ -739,11 +758,11 @@ func (ln *LocalNode) updateSuccessors() error {
 	ln.successors[1] = succ 
 
 	addr = ln.successors[1].Address
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 	e = ln.remote_GetSuccessor(addr, &s_address)
-		ln.mux.Lock()
+		// ln.mux.Lock()
 	if (e!= nil) {
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 		return e
 	}
 	succ = new(Node)
@@ -754,17 +773,17 @@ func (ln *LocalNode) updateSuccessors() error {
 	}
 	ln.successors[2] = succ 
 
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 	return nil
 }
 
 func (ln *LocalNode) Schedule() {
 	// Setup our stabilize timer
-		ln.mux.Lock()
+		// ln.mux.Lock()
 	if !ln.shutdown {
 		ln.timer = time.AfterFunc(randStabilize(ln.config), ln.Stabilize)
 	}
-		ln.mux.Unlock()
+		// ln.mux.Unlock()
 }
 
 func randStabilize(conf Config) time.Duration {
