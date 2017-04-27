@@ -8,8 +8,8 @@ import (
 
 func main() {
 	var l kvstore.LocalNode
-	l.Address = "127.0.0.1:3000"
-	l.Port = ":3000"
+	l.Address = "127.0.0.1:30000"
+	l.Port = ":30000"
 	l.Init(kvstore.DefaultConfig())
 	fmt.Println("Created Local Node")
 	l.Create()

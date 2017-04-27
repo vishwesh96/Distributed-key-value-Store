@@ -76,11 +76,11 @@ func (ln *LocalNode) Init(config Config) {
 	ln.shutdown = false
 	ln.mux = &sync.Mutex{}
 	var err error
-	ln.logfile, err = os.OpenFile(ln.Address+".log", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
+	ln.logfile, err = os.OpenFile(ln.Address+".log", os.O_RDWR | os.O_CREATE , 0666)
 	if err != nil {
     	log.Fatal("error opening file: %v", err)
 	}
-	defer ln.logfile.Close()
+	// defer ln.logfile.Close()
 
 	log.SetOutput(ln.logfile)
 	log.Println("Log for the node "+ln.Address)

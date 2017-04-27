@@ -1,0 +1,7 @@
+go run client-insert.go 0
+go run client-load.go 1 76
+<kill 3>
+go run client-load.go 1 76
+go run chord-join.go 3
+go run client-load.go 1 76
+
