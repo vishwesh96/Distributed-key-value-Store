@@ -7,7 +7,30 @@ import (
     "os"
     // "fmt"
 )
-
+func remote_Transaction(address string, trans transaction, val *string) error {
+    log.SetOutput(os.Stderr)
+    var complete_address = address
+    t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Println("dialing error in remote_Transaction:", err)
+        if (t!=nil){
+            t.Close()
+        }
+        return err
+    }
+    err = t.Call("Node_RPC.TransactionLeader_Stub",trans,val)
+    if err != nil {
+        log.Println("sync Call error in remote_Transaction:", err)
+        if (t!=nil){
+            t.Close()
+        }
+        return err
+    }
+    if (t!=nil){
+        t.Close()
+    }
+    return nil
+}
 // Remote Function Calls
 func (ln *LocalNode) remote_FindSuccessor (address string, key string, reply *string) error {
     var complete_address = address

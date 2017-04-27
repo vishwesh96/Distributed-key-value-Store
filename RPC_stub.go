@@ -31,6 +31,13 @@ type Hbeat struct{
 	Rx_time time.Time
 	Node_info Node
 }
+
+type transaction struct{ 
+	Keys []string
+	ret_vals []string
+	args_vals []string
+	types []int
+}
 type Node_RPC interface{
 	FindSuccessor_Stub(key string, reply *string) error
 	GetPredecessor_Stub(emp_arg struct{}, reply *string) error
@@ -44,8 +51,12 @@ type Node_RPC interface{
 	WriteKey_Stub(args RPC_WriteKey,emp_reply *struct{}) error
 	DeleteKey_Stub(args RPC_RDKey, emp_reply *struct{}) error
 	GetRemoteData_Stub(replica_number int, data_reply *map[string]string) error
+	TransactionLeader_Stub(t transaction, val* string) error
 }
-
+func (ln *LocalNode) TransactionLeader_Stub(t transaction, val* string) error {
+	err := ln.TransactionLeader(t,val)
+	return err
+}
 func (ln *LocalNode) FindSuccessor_Stub(key string, reply *string) error {
 	err := ln.FindSuccessor(key,reply)
 	return err

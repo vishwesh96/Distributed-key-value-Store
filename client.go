@@ -5,34 +5,72 @@ import (
     "strconv"
     "log"
     "os"
-    "container/list"
     "fmt"
+    "time"
 )
 
-type Hbeat struct{ 
-	var Keys []string
-	var ret_vals []string
-	var args_vals []string
-	var types []int
-}
-func Client_Transaction() error {
+func Client_Transaction(address string, val *string) error {
 
+	fmt.Println("Enter 1 for Write,2 for Read, 3 for Delete and 4 to exit")
+    var choice int 
+    fmt.Scanln(&choice)
+    var t transaction
+    var i int 
+    i=0
+    for choice!=4 {
+        switch choice {
+            case 1:
+    		fmt.Println("Enter Key to be written against")
+    		var key string
+    		var value string        
+            fmt.Scanln(&key)
+            fmt.Println("Enter value to be written")
+            fmt.Scanln(&value)
+            t.types[i]=1
+            t.Keys[i]=key
+            t.args_vals[i]=value
+            case 2:
+    		fmt.Println("Enter Key to be read")
+    		var key string
+            fmt.Scanln(&key)
+            t.types[i]=0
+            t.Keys[i]=key
+            case 3:
+    		fmt.Println("Enter Key to be deleted")
+    		var key string
+            fmt.Scanln(&key)
+            t.types[i]=2
+            t.Keys[i]=key
+            default:
+            fmt.Println("Enter a valid Choice")
+        }
+       i++
+       fmt.Println("Enter 1 for Write,2 for Read, 3 for Delete and 4 to exit")
+       fmt.Scanln(&choice)
+    
+    }
+   err :=remote_Transaction(address, t, val)
+   return err
 }
+
 func Client_remoteRead(address string, key string, val *string) error {
 	e,_ := remote_ReadKey(address,key,4,val)
 	return e
 }
 func (ln *LocalNode) TransactionLeader(t transaction, val* string) error {
 	var leaders []string = make([]string,len(t.Keys))
-	var replies []Hbeat = make([]Hbeat,len(t.Keys))
+	var replies [](*Hbeat) = make([](*Hbeat),len(t.Keys))
+	temp_str:=new(string)
 	var e error
-	temp_str:=new(str)
 	for i:=range t.Keys {
 		e=ln.FindSuccessor(t.Keys[i],temp_str)
+		if(e!=nil) {
+			log.Fatal("Unexepected Errors in transaction")
+		}
 		leaders[i]=*temp_str
 	}
 	for i:=range leaders {
-		ln.Remote_Heartbeat(leaders[i],&replies[i]) // Prepare to commit
+		ln.Remote_Heartbeat(leaders[i],replies[i]) // Prepare to commit
 	}
 	Hbeat_start := time.Now() //Start Timer
 	for ((time.Since(Hbeat_start))*time.Second<ln.config.HeartBeatTime) {
@@ -49,22 +87,25 @@ func (ln *LocalNode) TransactionLeader(t transaction, val* string) error {
 		if(t.types[i]==0) {
 				err,Async_Call:=remote_ReadKey(leaders[i],t.Keys[i],0,&t.ret_vals[i])
 				if(err!=nil) {
-					log.fatal("Unexepected Error in transaction")
+					log.Fatal("Unexepected Error in transaction")
 				}
 				<-Async_Call.Done
 		} else {
 			if(t.types[i]==1) {
 				err := remote_WriteKey(leaders[i],t.Keys[i],t.args_vals[i],0)
 				if(err!=nil) {
-					log.fatal("Unexepected Error in transaction")
+					log.Fatal("Unexepected Error in transaction")
 				}
 			} else if (t.types[i]==2) {
 				err:=remote_DeleteKey(leaders[i],t.Keys[i],0)
+				if(err!=nil) {
+					log.Fatal("Unexepected Error in transaction")
+				}
 			}
 		}		
 	}
-	*val=t.ret_vals[t.Keys-1]
-
+	*val=t.ret_vals[len(t.Keys)-1]
+	return nil
 }
 func (ln * LocalNode) ReadKey(key string, val *string) error{
 	leader := new(string)
