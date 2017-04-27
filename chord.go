@@ -49,6 +49,7 @@ type LocalNode struct {
 	mux			*sync.Mutex
 	Prev_read int
 	logfile *os.File
+	busy_flag bool
 }
 
 func DefaultConfig() Config {
@@ -74,6 +75,7 @@ func (ln *LocalNode) Init(config Config) {
 	ln.config = config
 	ln.Id = GenHash(ln.config, ln.Address)
 	ln.shutdown = false
+	ln.busy_flag =false
 	ln.mux = &sync.Mutex{}
 	var err error
 	ln.logfile, err = os.OpenFile(ln.Address+".log", os.O_RDWR | os.O_CREATE | os.O_APPEND, 0666)
@@ -972,6 +974,22 @@ func CopyMap(target map[string]string, source map[string]string){
 	}
 }
 
+func (ln *LocalNode) BusyNode(val *string) error {
+	if(ln.busy_flag==false) {
+		*val="false"
+		ln.busy_flag=true
+	} else {
+		*val="true"
+	}
+	return nil
+}
+
+func (ln *LocalNode) FreeNode() error {
+	if(ln.busy_flag==true) {
+		ln.busy_flag=false
+	} 
+	return nil
+}
 // func (ln *LocalNode) PrintSuccessorMaps(){
 // 	if ln.successors[0].Address != ln.Address{
 // 		log.Println("First Successor")

@@ -7,7 +7,59 @@ import (
     "os"
     // "fmt"
 )
-func remote_Transaction(address string, trans transaction, val *string) error {
+func remote_BusyNode(address string, val *string) error {
+    log.SetOutput(os.Stderr)
+    var complete_address = address
+    t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Println("dialing error in remote_BusyNode:", err)
+        if (t!=nil){
+            t.Close()
+        }
+        return err
+    }
+    var emp_args struct{}
+    err = t.Call("Node_RPC.BusyNode_Stub",emp_args,val)
+    if err != nil {
+        log.Println("sync Call error in remote_BusyNode:", err)
+        if (t!=nil){
+            t.Close()
+        }
+        return err
+    }
+    if (t!=nil){
+        t.Close()
+    }
+    return nil
+}
+func remote_FreeNode(address string) error {
+    log.SetOutput(os.Stderr)
+    var complete_address = address
+    t, err := rpc.DialHTTP("tcp", complete_address)
+    if err != nil {
+        log.Println("dialing error in remote_FreeNode:", err)
+        if (t!=nil){
+            t.Close()
+        }
+        return err
+    }
+    var emp_args struct{}
+    emp_reply:=new(struct{})
+    err = t.Call("Node_RPC.FreeNode_Stub",emp_args,emp_reply)
+    if err != nil {
+        log.Println("sync Call error in remote_FreeNode:", err)
+        if (t!=nil){
+            t.Close()
+        }
+        return err
+    }
+    if (t!=nil){
+        t.Close()
+    }
+    return nil
+}
+
+func remote_Transaction(address string, trans Transaction, val *string) error {
     log.SetOutput(os.Stderr)
     var complete_address = address
     t, err := rpc.DialHTTP("tcp", complete_address)
